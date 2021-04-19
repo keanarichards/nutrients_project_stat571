@@ -1,0 +1,132 @@
+---
+title: "TBD"
+author: "Keana Richards, Jeesung Ahn, Tonah Salas Ortiz"
+date: " "
+output:
+  html_document:
+    code_folding: show
+    highlight: haddock
+    theme: lumen
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+bibliography: ["library.bib"]
+
+---
+
+General notes on project:
+- max of 15 pages 
+
+
+```{r setup, include=FALSE}
+options(scipen = 0, digits = 3, tibble.print_max = 50) 
+
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning = F)
+
+if(!require("pacman")) install.packages("pacman")
+pacman::p_load(tidyverse, here, glmnet, car, data.table, summarytools, corrplot, GGally, varhandle, gtsummary, pROC, stargazer, sjPlot) 
+
+
+
+plot_aes = theme_minimal() +
+  theme(legend.position = "top",
+        text = element_text(size = 15, family = "Futura Medium"),
+        axis.text = element_text(color = "black"),
+        axis.line = element_line(colour = "black"),
+        axis.ticks.y = element_blank())
+
+# load data ---------------------------------------------------------------
+
+food_name <- read.csv(here("cnf-fcen-csv", "FOOD_NAME.csv"))
+food_group <- read.csv(here("cnf-fcen-csv", "FOOD_GROUP.csv"))
+nutrient_amount <- read.csv(here("cnf-fcen-csv", "NUTRIENT_AMOUNT.csv"))
+nutrient_name <- read.csv(here("cnf-fcen-csv", "NUTRIENT_NAME.csv"))
+
+```
+
+
+```{r}
+## creating wide version of data for PCA
+
+## merging datasets on identifiers
+
+## start by identifying nutrients - merge nutrient amount & nutrient name 
+
+nutrient_amount_merged <- left_join(nutrient_amount %>% select(NutrientID, NutrientValue, FoodID), nutrient_name %>% select(NutrientID, NutrientName, NutrientUnit), by = "NutrientID") 
+
+## then merging add food group labels to food name dataset
+
+food_name_merged <- left_join(food_name %>% select(FoodID, FoodGroupID, FoodDescription), food_group %>% select(FoodGroupID, FoodGroupName), by = "FoodGroupID") 
+
+## creating wide version of nutrient_amount dataset to be merged with food_name
+
+nutrient_amount_wide <- nutrient_amount_merged %>% select(-c(NutrientID, NutrientUnit)) %>%  pivot_wider(names_from = NutrientName, values_from = NutrientValue)
+
+## merging wide nutrient_amount with food_name_merged
+
+wide_data <- left_join(food_name_merged, nutrient_amount_wide, by = "FoodID") 
+
+```
+
+
+```{r}
+## creating long version of data for logistic regression
+
+long_data <- wide_data %>% pivot_longer(cols = PROTEIN:`OXALIC ACID`, names_to = "NutrientName", values_to = "NutrientValue")
+
+```
+
+
+
+# Executive Summary {#executive-summary}
+
+
+# Introduction {#introduction}
+
+
+# Methods {#methods}
+
+## Data Summary /EDA {#eda}
+
+- The data is pulled from the [Canadian Nutrient File database](https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/nutrient-data/canadian-nutrient-file-2015-download-files.html). 
+
+- All of the nutrient data is stored per 100g of the food - that is, all nutritional data is on the same scale 
+
+
+
+
+
+
+
+
+
+## Analyses {#analyses}
+
+- use tab_model or stargazer for showing regressions 
+
+# Conclusion {#conclusion}
+
+
+# Limitations {#limitations}
+
+
+# Appendix {#appendix}
+
+
+## Full summary of clean dataset {#clean-data-summary}
+
+```{r, results = 'asis', cache = T}
+dfSummary(original,  plain.ascii = FALSE, style = 'grid', graph.magnif = 0.75, 
+          valid.col = FALSE, tmp.img.dir = "/tmp")
+
+```
+
+
+
+# References
+
+
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
