@@ -24,7 +24,7 @@ options(scipen = 0, digits = 3, tibble.print_max = 50)
 knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning = F)
 
 if(!require("pacman")) install.packages("pacman")
-pacman::p_load(tidyverse, here, glmnet, car, data.table, summarytools, corrplot, GGally, varhandle, gtsummary, pROC, stargazer, sjPlot) 
+pacman::p_load(tidyverse, here, glmnet, car, data.table, summarytools, corrplot, GGally, varhandle, gtsummary, pROC, stargazer, sjPlot, report) 
 
 
 
@@ -78,48 +78,130 @@ long_data <- wide_data %>% pivot_longer(cols = PROTEIN:`OXALIC ACID`, names_to =
 
 
 
-# Executive Summary {#executive-summary}
+# Executive Summary {#executive-summary} - Tonah
 
 
-# Introduction {#introduction}
+# Introduction {#introduction} - Tonah
+- make sure to include citations - showing why this research matters (can you send me PDFs of the citations you include so I can include them in the final project doc)
+	- create citations in the same way we did before in diabetes project 
 
 
 # Methods {#methods}
 
-## Data Summary /EDA {#eda}
+## Data Summary /EDA {#eda} - Keana 
 
-- The data is pulled from the [Canadian Nutrient File database](https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/nutrient-data/canadian-nutrient-file-2015-download-files.html). 
+Our dataset originates from the most recent (updated in 2015) version of the [Canadian Nutrient File](https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/nutrient-data/canadian-nutrient-file-2015-download-files.html). The database contains average values for nutrients in foods available in Canada. These averages are based on the generic versions of a food, unless there is a brand specifically included in the database. This is a bilingual dataset with food names, descriptions, and background information that are in both French and English. One of the major goals in creating this version of the dataset was to update nutrient values for foods that are the largest contributors of sodium to the diet, since one of the major goals of manufacturers is to reduce sodium content of foods. 
 
-- All of the nutrient data is stored per 100g of the food - that is, all nutritional data is on the same scale 
+To this end, the database assesses more than `r nrow(wide_data)` unique foods, ranging from foods such as `r wide_data %>% select(FoodDescription) %>% slice(1)` to `r wide_data %>% select(FoodDescription) %>% slice(174)`, and provides the average nutrient levels per 100 grams. 
 
+Notably, some of the nutrients included are subcomponents of other nutrients. Or, like the two metrics for food energy (i.e., kcal and kJ), they are just different ways of measuring the same thing (i.e., one kcal = 4.184 kJ)
 
+Also, it is worth noting that there are many values that are missing. For instance, only `r sum(is.na(wide_data %>% select(BIOTIN)))/nrow(wide_data)`% of the rows have values for biotin (see [Missing values in clean dataset section](#missing-vals-clean))
 
-
-
-
-
-
-
-## Analyses {#analyses}
-
-- use tab_model or stargazer for showing regressions 
-
-# Conclusion {#conclusion}
+The original dataset was a relational dataset, with unique identifiers for the main variables of interest. Therefore, we had to merge on the unique identifiers (e.g., `FoodID`) across the relational datasets using the `left_join` function. Then, we 
 
 
-# Limitations {#limitations}
+The original dataset was cleaned for analyses in the following ways: 
 
 
-# Appendix {#appendix}
+
+(see [here](#clean-data-summary) for a full summary of the variables in the cleaned dataset). All of the subsequent summary statistics and analyses mentioned in the paper will be using the clean dataset. 
+
+
+
+
+notes from here: chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/file:///C:/Users/keana/OneDrive%20-%20PennO365/Comp_transfer2018/Penn/fourth_yr/nutrients_project_stat571/cnf-fcen-csv/CNF%202015%20users_guide%20EN.pdf
+
+
+description of file contents: 
+From FOOD NAME.csv: 
+FoodID (merging var)
+FoodGroupID (merging var)
+FoodDescription
+From NUTRIENT NAME.csv:
+NutrientID (merging var)
+NutrientName
+NutrientUnit (possibly as control??)
+From NUTRIENT AMOUNT.csv:
+NutrientValue
+FoodID (merging var)
+NutrientID (merging var)
+From FOOD GROUP.csv
+FoodGroupID (merging var)
+FoodGroupName
+
+Main file of interest is NUTRIENT AMOUNT.csv -- contains long version of dataset, where there are multiple rows for each food, along with a col for the nutrient identifier and the nutrient value associated with that identifier
+
+Will have to combine the multiple datasets in one to have all info in one place 
+
+"At  present  foods  are  grouped  under  23 different  group  headings  based  on  similar characteristics of the foods"
+
+The foodnamesare only available  in this  version  in  one  lengthwhich does not include abbreviationsand can be up to 255 characters long
+
+- All of the nutrient data is stored per 100g of the food (edible portion) - that is, all nutritional data is on the same scale 
+
+- in cleaning - only selected variables of interest (e.g., we removed mean SE for the nutrient values, since there were many missing values)
+
+
+
+
+## Analyses {#analyses} - Jeesung (both describing the analyses that were run - aka methods and running the analyses)
+
+We used 
+
+- use tab_model or stargazer for showing regressions (see previous write ups for examples)
+
+- use silhouette method from lecture on clustering to decide on a number of clusters
+
+- just write the code to create the models & figures & Keana will incorporate the results into the results/appendix section - no need to write out the stat output from models - just a symmary of what they generally show & logic will be helpful 
+
+- last time there was writing between the code - which made the formatting look a little weird (ie weird spacing between paragaphs where the code was). this time, let's have all of the code at the end of a section so the formatting doesn't get messed up 
+
+- possibly use this package for assessing model fit (if included): https://github.com/easystats/performance
+What are the words in food description that predict the cluster they might be in? 
+
+# Results - Keana 
+
+- possibly use this package: https://github.com/easystats/parameters
+
+# Conclusion {#conclusion} - Keana 
+
+chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/file:///C:/Users/keana/OneDrive%20-%20PennO365/Comp_transfer2018/Penn/fourth_yr/nutrients_project_stat571/cnf-fcen-csv/CNF%202015%20users_guide%20EN.pdf
+- The CNF is particularly suited for assessment of diets, recipe development, menu planning when  ingredients  or  menu  items  are  not  specific  and  for  population  nutrition  surveillance activities, where nutrient intake distributions areused to conduct risk assessments such as modeling  for  fortification  proposals.    It  is  also  useful  in  the  initial  stages  of  product development to ensure that nutritional targets can be met. 
+
+# Limitations {#limitations} - Keana 
+
+chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/file:///C:/Users/keana/OneDrive%20-%20PennO365/Comp_transfer2018/Penn/fourth_yr/nutrients_project_stat571/cnf-fcen-csv/CNF%202015%20users_guide%20EN.pdf
+- The exact nutrient  composition  of  a  specific  apple  or  cookie isnot  found  on  the  CNF.    These averages,  except  where  indicated  otherwise,  take  into  account  sources  of  a  given  food across Canada.  Local foods may have a different profile than the national average.
+- Most  users  are  lookingfor  an  average  or  mean  value  for  a  generic  representation  of  the foods  as described.    These generic  values  have  been  derived  from  combining  brands  of similar  products,  for  example  all  major  brands  of  ketchup;  various  varieties  of  oranges  or similar  beef  cuts  from  various  producers.  
+- This dataset is only relevant to products available in Canada - so the results cannot be generalized to products from other countries. Therefore future research should explore whether these findings replicate among products in other countries.
+- the nutrient values are all standardized, not representative of how much a person may actually consume in a package - would need to convert to nutrient values for the actual portions people eat to be interpretable 
+
+# Appendix {#appendix} - Keana 
 
 
 ## Full summary of clean dataset {#clean-data-summary}
 
 ```{r, results = 'asis', cache = T}
-dfSummary(original,  plain.ascii = FALSE, style = 'grid', graph.magnif = 0.75, 
+wide_data %>% select(-c(FoodID, FoodGroupID, FoodDescription)) %>% dfSummary(.,  plain.ascii = FALSE, style = 'grid', graph.magnif = 0.75, 
           valid.col = FALSE, tmp.img.dir = "/tmp")
 
 ```
+
+## Missing values in clean dataset {#missing-vals-clean}
+
+```{r}
+inspect.na(wide_data, summary = F)
+```
+
+## Citations for packages used 
+
+```{r, results = 'asis'}
+
+report(sessionInfo())
+```
+
+- possibly use this to write functions 
 
 
 
