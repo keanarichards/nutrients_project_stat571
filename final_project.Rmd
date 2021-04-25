@@ -79,7 +79,6 @@ long_data <- wide_data %>% pivot_longer(cols = PROTEIN:`OXALIC ACID`, names_to =
 
 # Executive Summary {#executive-summary} - Tonah
 
-
 # Introduction {#introduction} - Tonah
 - make sure to include citations - showing why this research matters (can you send me PDFs of the citations you include so I can include them in the final project doc)
 	- create citations in the same way we did before in diabetes project 
@@ -1901,18 +1900,7 @@ data_mean_imp_crucial=data_mean_imp_crucial %>% rename_at(vars(oldnames), ~ newn
 ## RUN PCA of nutrient data
 pca <- prcomp(data_mean_imp_crucial)
 
-  We will run spectrum clustering to see which foods are grouped together based on their nutrient profile. In doing so, we want to find out whether we can find clear-cut clusters of foods based on nutrition profile regardless of actual food group assignment. Our grouping results can be used to find the list of foods that contain the best combination of nutrients based on a person’s dietary needs. This improves upon diets that try to rely on the actual food grouping, since our grouping result will be a better representation of the nutrient profile of a set of foods than the food group label, which may be determined arbitrarily.
-  Since we have large dimensions of data (153 nutrient information for `r nrow(wide_data)` unique foods), we are going to run principal component analysis (PCA) to
-
-<< To Be Decided Together with Team>>
-1. How to deal with NAs? : want to run PCA and find ideal number of PCs that will be used for spectrum clustering. can't run prcomp with NAs.(if use na.omit -- no single food will survive -- recode all NAs to 0 for prelim analyses)
-
-2. prcomp : scale and center each column? 
-
-3. two Energy variables -- only use one? or remove these two? i like the idea of predicting average calories of each cluster that we will assign-- any recommended methods to do this? just report average calories of each cluster? 
-- FYI, according to PCA, Energy is top loading nutrient of PC1 
-
-4. Prelim results : spectrum clustering using 7 PCs and 5 clusters (when plotted, results don't look pretty)
+````
 
 
 ```{r PCA}
