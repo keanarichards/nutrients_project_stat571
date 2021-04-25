@@ -1901,47 +1901,65 @@ data_mean_imp_crucial=data_mean_imp_crucial %>% rename_at(vars(oldnames), ~ newn
 ## RUN PCA of nutrient data
 pca <- prcomp(data_mean_imp_crucial)
 
-# names(pca)
-pca.loading<-pca$rotation
-# knitr::kable(pca.loading)
-# summary(pca)$importance 
+  We will run spectrum clustering to see which foods are grouped together based on their nutrient profile. In doing so, we want to find out whether we can find clear-cut clusters of foods based on nutrition profile regardless of actual food group assignment. Our grouping results can be used to find the list of foods that contain the best combination of nutrients based on a person’s dietary needs. This improves upon diets that try to rely on the actual food grouping, since our grouping result will be a better representation of the nutrient profile of a set of foods than the food group label, which may be determined arbitrarily.
+  Since we have large dimensions of data (153 nutrient information for `r nrow(wide_data)` unique foods), we are going to run principal component analysis (PCA) to
+
+<< To Be Decided Together with Team>>
+1. How to deal with NAs? : want to run PCA and find ideal number of PCs that will be used for spectrum clustering. can't run prcomp with NAs.(if use na.omit -- no single food will survive -- recode all NAs to 0 for prelim analyses)
+
+2. prcomp : scale and center each column? 
+
+3. two Energy variables -- only use one? or remove these two? i like the idea of predicting average calories of each cluster that we will assign-- any recommended methods to do this? just report average calories of each cluster? 
+- FYI, according to PCA, Energy is top loading nutrient of PC1 
+
+4. Prelim results : spectrum clustering using 7 PCs and 5 clusters (when plotted, results don't look pretty)
+
+
+```{r PCA}
+# recode NAs to 0 to run PCA 
+nutrient_only<-wide_data %>% select(-c(FoodID,FoodGroupID,FoodDescription,FoodGroupName)) 
+nutrient_only[is.na(nutrient_only)] <- 0
+head(nutrient_only)
+
+## RUN PCA of nutrient data
+pca <- prcomp(nutrient_only,scale=T,center=T)
 
 # How many PCs to use? --> 6 PCs seem to explain most variance according to elbow rule
-plot(summary(pca)$importance[2, ],  # PVE
-     ylab="PVE",
-     xlab="Number of PC's",
-     pch = 16, 
-     main="Scree Plot of PVE for AFQT")
+
+# How many PCs to use? --> 7~8 PCs seem to explain most variance according to elbow rule
+
 pve <- summary(pca)$importance[2, 1:10]
 plot(pve, type="b", pch = 19, frame = FALSE)
-# plot(summary(pca)$importance[3, ], pch=16,
- #    ylab="Cumulative PVE",
-   #  xlab="Number of PC's",
-  #   main="Scree Plot of Cumulative PVE for AFQT")
+
+
+pve <- summary(pca)$importance[2, 1:10]
+plot(pve, type="b", pch = 19, frame = FALSE)
+
+
 ```
 ##### Most important nutrients used for spectrum clustering (PC1, PC2)
 ```{r}
 ## plot top 20 loadings
 top_k <- 20
-## get pc1 and pc2
-pc1 <- data.frame(loading = pca$rotation[,1],
-                  gene = rownames(pca$rotation),
-                  pc = "PC1")
-pc2 <- data.frame(loading = pca$rotation[,2],
-                  gene = rownames(pca$rotation),
-                  pc = "PC2")
+
+
+```
+
+```{r}
+## plot top 20 loadings
+top_k <- 20
+
+
 # get top_k of pc1 and pc2
 pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
 pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
-rbind(pc1_top, pc2_top) %>%
-  ggplot(aes(x = reorder(gene, -loading), y = loading)) +
-  geom_point() +
-  ggtitle("Top loadings") +
-  xlab("Nutrient") +
-  facet_wrap(~pc, nrow = 1, scales = "free_x") +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1))
-```
+
+
+# get top_k of pc1 and pc2
+pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
+pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
+
+
 ###### Run k-means clustering
 
 ```{r spectrum kmeans}
@@ -2158,6 +2176,40 @@ Describe:
 - mean kcal per cluster 
 - most important nutrients based on PCA 
 
+```{r spectrum kmeans}
+# optimal number of clusters : according to silhouette method, it's 5. 
+set.seed(0)
+factoextra::fviz_nbclust(nutrient_only, kmeans, method = "silhouette")
+
+# kmeans 
+kmean<- kmeans(x = pca$x[, 1:7], 5)
+
+# color indicates the true cancer type
+# shape indicates the cluster results 
+p <- data.table(x = pca$x[,1], 
+                y = pca$x[,2],
+                cl = as.factor(wide_data$FoodGroupName),
+                col = as.factor(kmean$cluster)) %>%
+  ggplot() + 
+  geom_point(aes(x = x, y = y, col = col))+
+  scale_color_manual(values = scales::hue_pal()(5)) +
+  theme_bw() +
+  labs(color = "Food Clusters") +
+  xlab("PC1") +
+  ylab("PC2")
+
+
+p
+```
+
+```{r, include=False}
+head(wide_data,20)
+dim(wide_data)
+unique(wide_data$FoodDescription)
+names(wide_data)
+head(nutrient_amount_merged)
+names(nutrient_amount_wide)
+```
 
 Once we've decided on the best method - Make recommendation for a person who has certain dietary needs 
 
@@ -2168,8 +2220,7 @@ Once we've decided on the best method - Make recommendation for a person who has
 
 
 
-
-
+# Results - Keana 
 
 # Conclusion {#conclusion} - Keana 
 
