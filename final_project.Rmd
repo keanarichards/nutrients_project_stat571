@@ -1,7 +1,7 @@
 ---
 title: "TBD"
 author: "Keana Richards, Jeesung Ahn, Tonah Salas Ortiz"
-date: " "
+date: ' '
 output:
   html_document:
     code_folding: show
@@ -10,8 +10,10 @@ output:
     toc: yes
     toc_depth: 4
     toc_float: yes
-bibliography: ["library.bib"]
-
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
+bibliography: library.bib
 ---
 
 General notes on project:
@@ -162,7 +164,7 @@ The foodnamesare only available  in this  version  in  one  lengthwhich does not
 
 
 ## 1. Data Cleaning
-```{r dealing with NAs, include=False}
+```{r dealing with NAs, include=FALSE}
 ######## data with mean imputation
 data_mean_imp_temp<-wide_data %>% select(-c(FoodID,FoodGroupID,FoodDescription,FoodGroupName))
 data_mean_imp<-imputeTS::na.mean(data_mean_imp_temp,option="mean")
@@ -182,7 +184,7 @@ data_halfNArm_mean_imp<-imputeTS::na.mean(data_halfNArm,option="mean")
 ## 2.1 Option 1 to handle NAs: use mean imputed data
 #### 2.1.1 Regular K-means Clustering 
 ###### Run k-means clustering
-```{r regular kmeans}
+```{r regular kmeans1,echo=F}
 # optimal number of clusters : according to silhouette method, 8 clusters is optimal  
 set.seed(0)
 factoextra::fviz_nbclust(data_mean_imp, kmeans, method = "silhouette")
@@ -194,7 +196,7 @@ print(c('Size of each cluster is', data_mean_imp.kmeans$size))
 ```
 ###### Plotting : two random variables 
 
-```{r plot clustering}
+```{r plot clustering1,echo=F}
 ##### randomly choose two variables and plot clustering results
 data.frame(Carb = data_mean_imp$`CARBOHYDRATE, TOTAL (BY DIFFERENCE)`, 
           Kcal =data_mean_imp$`ENERGY (KILOCALORIES)`,
@@ -206,7 +208,7 @@ data.frame(Carb = data_mean_imp$`CARBOHYDRATE, TOTAL (BY DIFFERENCE)`,
 ```
 ###### Plotting : wordcloud
 
-```{r wordcloud}
+```{r wordcloud1,echo=F}
 ###### data table with food name + clustering result
 result_regular_kmeans<-wide_data %>% select (FoodDescription) %>%
         mutate(group = data_mean_imp.kmeans$cluster) %>% arrange(group)
@@ -335,7 +337,7 @@ wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=200, random.o
 ```
 ###### Mean calories per cluster 
 
-```{r calories}
+```{r calories1,echo=F}
 ###### average calory count per cluster
 avg_calories=data_mean_imp %>% mutate(group = data_mean_imp.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
 
@@ -345,7 +347,7 @@ ggplot(avg_calories) +
 ```
 
 ###### Most important nutrients (PCA)
-```{r most important nutrient}
+```{r most important nutrient1,echo=F}
 # PCA of nutrients 
 data_mean_imp_temp =data_mean_imp %>% mutate(group = data_mean_imp.kmeans$cluster) 
 data_mean_imp.c1<-data_mean_imp_temp[data_mean_imp_temp$group==1,]
@@ -553,7 +555,7 @@ rbind(pc1_top, pc2_top) %>%
 
 #### 2.1.2 Spectrum Clustering 
 ###### First, Run PCA
-```{r PCA}
+```{r PCA1,echo=F}
 ## RUN PCA of nutrient data
 pca <- prcomp(data_mean_imp)
 
@@ -576,7 +578,7 @@ plot(pve, type="b", pch = 19, frame = FALSE)
   #   main="Scree Plot of Cumulative PVE for AFQT")
 ```
 ##### Most important nutrients used for spectrum clustering (PC1, PC2)
-```{r}
+```{r most important nutrient2,echo=F}
 ## plot top 20 loadings
 top_k <- 20
 ## get pc1 and pc2
@@ -600,7 +602,7 @@ rbind(pc1_top, pc2_top) %>%
 ```
 ###### Run k-means clustering
 
-```{r spectrum kmeans}
+```{r spectrum kmeans1,echo=F}
 # optimal number of clusters : according to silhouette method, it's 8 (same as regular clustering). 
 set.seed(0)
 factoextra::fviz_nbclust(data_mean_imp, kmeans, method = "silhouette")
@@ -685,7 +687,7 @@ p2
 
 ###### Plotting : wordcloud
 
-```{r wordcloud}
+```{r wordcloud2,echo=F}
 ###### data table with food name + clustering result
 result_mean_imp_spectrum_kmeans<-wide_data %>% select (FoodDescription) %>%
         mutate(group = data.mean.imp.spectrum.kmeans$cluster) %>% arrange(group)
@@ -815,7 +817,7 @@ wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=200, random.o
 ```
 ###### Mean calories per cluster 
 
-```{r calories}
+```{r calories2,echo=F}
 ###### average calory count per cluster
 avg_calories=data_mean_imp %>% mutate(group=data.mean.imp.spectrum.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
 
@@ -825,7 +827,7 @@ ggplot(avg_calories) +
 ```
 
 ###### Most important nutrients (PCA)
-```{r most important nutrient, echo=F}
+```{r most important nutrient2.2, echo=F}
 # PCA of nutrients 
 data_mean_imp_temp1 =data_mean_imp %>% mutate(group = data.mean.imp.spectrum.kmeans$cluster) 
 data_mean_imp.c1<-data_mean_imp_temp1[data_mean_imp_temp1$group==1,]
@@ -1034,7 +1036,7 @@ rbind(pc1_top, pc2_top) %>%
 ## 2.2 Option 2 to handle NAs: remove variables with more than 50% of NAs + apply mean imputation
 #### 2.1.1 Regular K-means Clustering 
 ###### Run k-means clustering
-```{r regular kmeans}
+```{r regular kmeans2, echo=F}
 # optimal number of clusters : according to silhouette method, 8 clusters is optimal  
 set.seed(0)
 factoextra::fviz_nbclust(data_halfNArm_mean_imp, kmeans, method = "silhouette")
@@ -1045,7 +1047,7 @@ print(c('Size of each cluster is', data_halfNArm_mean_imp.kmeans$size))
 ```
 ###### Plotting : two random variables 
 
-```{r plot clustering}
+```{r plot clustering2,echo=F}
 ##### randomly choose two variables and plot clustering results
 data.frame(Carb = data_halfNArm_mean_imp$`CARBOHYDRATE, TOTAL (BY DIFFERENCE)`, 
           Kcal =data_halfNArm_mean_imp$`ENERGY (KILOCALORIES)`,
@@ -1057,7 +1059,7 @@ data.frame(Carb = data_halfNArm_mean_imp$`CARBOHYDRATE, TOTAL (BY DIFFERENCE)`,
 ```
 ###### Plotting : wordcloud of each cluster
 
-```{r wordcloud, echo=T}
+```{r wordcloud_spect, echo=F}
 ###### data table with food name + clustering result
 result_regular_kmeans<-wide_data %>% select (FoodDescription) %>%
         mutate(group = data_halfNArm_mean_imp.kmeans$cluster) %>% arrange(group)
@@ -1186,7 +1188,7 @@ wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=200, random.o
 ```
 ###### Mean calories per cluster 
 
-```{r calories, echo=T}
+```{r calories3, echo=F}
 ###### average calory count per cluster
 avg_calories=data_halfNArm_mean_imp %>% mutate(group = data_halfNArm_mean_imp.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
 
@@ -1196,7 +1198,7 @@ ggplot(avg_calories) +
 ```
 
 ###### Most important nutrients (PCA)
-```{r most important nutrient}
+```{r most important nutrient4,echo=F}
 # PCA of nutrients 
 data_halfNArm_mean_imp_temp =data_halfNArm_mean_imp %>% mutate(group = data_halfNArm_mean_imp.kmeans$cluster) 
 data_halfNArm_mean_imp.c1<-data_halfNArm_mean_imp_temp[data_halfNArm_mean_imp_temp$group==1,]
@@ -1404,7 +1406,7 @@ rbind(pc1_top, pc2_top) %>%
 
 #### 2.1.2 Spectrum Clustering 
 ###### First, Run PCA
-```{r PCA}
+```{r PCA2,echo=F}
 ## RUN PCA of nutrient data
 pca <- prcomp(data_halfNArm_mean_imp)
 
@@ -1452,7 +1454,7 @@ rbind(pc1_top, pc2_top) %>%
 ```
 ###### Run k-means clustering
 
-```{r spectrum kmeans, echo=F}
+```{r spectrum kmeans2, echo=F}
 # optimal number of clusters : according to silhouette method, it's 8 (same as regular clustering). 
 set.seed(0)
 factoextra::fviz_nbclust(data_halfNArm_mean_imp, kmeans, method = "silhouette")
@@ -1537,7 +1539,7 @@ p2
 
 ###### Plotting : wordcloud
 
-```{r wordcloud, echo=F}
+```{r wordcloud4, echo=F}
 ###### data table with food name + clustering result
 result_mean_imp_spectrum_kmeans<-wide_data %>% select (FoodDescription) %>%
         mutate(group = data.mean.imp.spectrum.kmeans$cluster) %>% arrange(group)
@@ -1667,7 +1669,7 @@ wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=200, random.o
 ```
 ###### Mean calories per cluster 
 
-```{r calories}
+```{r calories4,echo=F}
 ###### average calory count per cluster
 avg_calories=data_halfNArm_mean_imp %>% mutate(group=data.mean.imp.spectrum.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
 
@@ -1677,7 +1679,7 @@ ggplot(avg_calories) +
 ```
 
 ###### Most important nutrients (PCA)
-```{r most important nutrient, echo=F}
+```{r most important nutrient6, echo=F}
 # PCA of nutrients 
 data_halfNArm_mean_imp_temp1 =data_halfNArm_mean_imp %>% mutate(group = data.mean.imp.spectrum.kmeans$cluster) 
 data_halfNArm_mean_imp.c1<-data_halfNArm_mean_imp_temp1[data_halfNArm_mean_imp_temp1$group==1,]
@@ -1900,7 +1902,7 @@ data_mean_imp_crucial=data_mean_imp_crucial %>% rename_at(vars(oldnames), ~ newn
 ```
 
 ###### First, Run PCA
-```{r PCA}
+```{r PCA_crucial,echo=F}
 ## RUN PCA of nutrient data
 pca <- prcomp(data_mean_imp_crucial)
 
@@ -1923,7 +1925,7 @@ plot(pve, type="b", pch = 19, frame = FALSE)
   #   main="Scree Plot of Cumulative PVE for AFQT")
 ```
 ##### Most important nutrients used for spectrum clustering (PC1, PC2)
-```{r}
+```{r,echo=F}
 ## plot top 20 loadings
 top_k <- 20
 ## get pc1 and pc2
@@ -1947,7 +1949,7 @@ rbind(pc1_top, pc2_top) %>%
 ```
 ###### Run k-means clustering
 
-```{r spectrum kmeans}
+```{r spectrum kmeans_crucial,echo=F}
 # optimal number of clusters : according to silhouette method, it's 2
 set.seed(0)
 factoextra::fviz_nbclust(data_mean_imp_crucial, kmeans, method = "silhouette")
@@ -2026,7 +2028,7 @@ p2
 
 ###### Plotting : wordcloud
 
-```{r wordcloud}
+```{r wordcloud_crucial,echo=F}
 ###### data table with food name + clustering result
 result_mean_imp_spectrum_kmeans<-wide_data %>% select (FoodDescription) %>%
         mutate(group = data.crucial.mean.imp.spectrum.kmeans$cluster) %>% arrange(group)
@@ -2064,7 +2066,7 @@ wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=200, random.o
 ```
 ###### Mean calories per cluster 
 
-```{r calories}
+```{r calories_crucial,echo=F}
 ###### average calory count per cluster
 avg_calories=data_mean_imp_crucial %>% mutate(group=data.crucial.mean.imp.spectrum.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
 
@@ -2074,7 +2076,7 @@ ggplot(avg_calories) +
 ```
 
 ###### Most important nutrients (PCA)
-```{r most important nutrient, echo=F}
+```{r most important nutrient_crucial,echo=F}
 # PCA of nutrients 
 data_mean_imp_crucial_temp1 =data_mean_imp_crucial %>% mutate(group = data.crucial.mean.imp.spectrum.kmeans$cluster) 
 data_mean_imp_crucial.c1<-data_mean_imp_crucial_temp1[data_mean_imp_crucial_temp1$group==1,]
@@ -2103,7 +2105,6 @@ rbind(pc1_top, pc2_top) %>%
   theme_bw() + 
   theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1))
 
-
 # Cluster 2
 data_mean_imp_crucial.pca <- prcomp(data_mean_imp_crucial.c2)
 
@@ -2126,7 +2127,6 @@ rbind(pc1_top, pc2_top) %>%
   facet_wrap(~pc, nrow = 1, scales = "free_x") +
   theme_bw() + 
   theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1))
-
 
 ```
 # Methods Parking Lot 
