@@ -80,7 +80,9 @@ long_data <- wide_data %>% pivot_longer(cols = PROTEIN:`OXALIC ACID`, names_to =
 
 
 # Executive Summary {#executive-summary} - Tonah
+
 Many countries around the world provide nationwide dietary guidelines to the public and require nutrition labels on food products to help people make informed choices about foods and drinks they consume. Every individual, however, has different nutrition needs and preferences according to their age, sex, ethnicity, height, weight, and physical activity level, among many other factors. Therefore, people may benefit from more personalized dietary recommendations. Our goal is to provide the basis for an algorithm that recommends foods a person should consume based on their nutrition needs. To this end, we will compare different approaches to grouping foods based on their nutrient profiles (i.e., spectrum clustering vs. k-means clustering) and demonstrate how others can use our data-driven food groupings to meet their dietary needs. 
+
 
 # Introduction {#introduction} - Tonah
 - make sure to include citations - showing why this research matters (can you send me PDFs of the citations you include so I can include them in the final project doc)
@@ -2938,12 +2940,10 @@ rbind(pc1_top, pc2_top) %>%
 ```{r,echo=F}
 ## RUN PCA of nutrient data
 pca <- prcomp(data_halfNArm_mean_imp)
-
 # names(pca)
 pca.loading<-pca$rotation
 # knitr::kable(pca.loading)
 # summary(pca)$importance 
-
 # How many PCs to use? --> 6~7 PCs seem to explain most variance according to elbow rule
 plot(summary(pca)$importance[2, ],  # PVE
      ylab="PVE",
