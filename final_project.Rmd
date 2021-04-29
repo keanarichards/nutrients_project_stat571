@@ -1404,6 +1404,90 @@ random_sample <- sample(length(rownum5),10)
 wide_data$FoodDescription[random_sample]
 
 ```
+#### Scenario 3. Dibetes Diet
+
+Mark, diabete patient: male, weigh 70kg. want to maintain weight. gonna consume 1500kcal per day
+
+-source: https://www.ncbi.nlm.nih.gov/books/NBK279012/#:~:text=As%20with%20the%20general%20population,of%20the%20daily%20carbohydrate%20intake,  https://www.niddk.nih.gov/health-information/diabetes/overview/diet-eating-physical-activity
+
+* 0.8 g protein/kg desirable body weight 
+* 14g of fiber per 1000 kcal ingested
+* limit: saturated fat, trans fat, sugar
+* limit sodium consumption to 2,300 mg/day.
+* increase: monounsaturated fats, polyunsatruated fats, STARCH carb,
+
+#### 1) Create Data
+```{r}
+scenario['Scenario3']=scenario$Average_Amount
+
+scenario[which(scenario$Nutrient=="ENERGY (KILOCALORIES)"),]$Scenario3 <-1500
+scenario[which(scenario$Nutrient=="PROTEIN"),]$Scenario3 <-560
+scenario[which(scenario$Nutrient=="FIBRE, TOTAL DIETARY"),]$Scenario3 <-21
+
+# Monounsaturated fat 2 Standard Deviation higher than Mean 
+scenario[which(scenario$Nutrient=="FATTY ACIDS, MONOUNSATURATED, TOTAL"),]$Scenario3<- scenario[which(scenario$Nutrient=="FATTY ACIDS, MONOUNSATURATED, TOTAL"),]$Average_Amount+scenario[which(scenario$Nutrient=="FATTY ACIDS, MONOUNSATURATED, TOTAL"),]$STD*2
+
+# Polyunsaturated fat 2 Standard Deviation higher  than Mean 
+scenario[which(scenario$Nutrient=="FATTY ACIDS, POLYUNSATURATED, TOTAL"),]$Scenario3<- scenario[which(scenario$Nutrient=="FATTY ACIDS, POLYUNSATURATED, TOTAL"),]$Average_Amount+scenario[which(scenario$Nutrient=="FATTY ACIDS, POLYUNSATURATED, TOTAL"),]$STD*2
+
+# STARCH 2 Standard Deviation higher than Mean 
+scenario[which(scenario$Nutrient=="STARCH"),]$Scenario3<- scenario[which(scenario$Nutrient=="STARCH"),]$Average_Amount+scenario[which(scenario$Nutrient=="STARCH"),]$STD*2
+
+# Saturated fat 2 Standard Deviation less than Mean 
+scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$Scenario3<- scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$Average_Amount-scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$STD*2
+
+# Saturated fat 2 Standard Deviation less than Mean 
+scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$Scenario3<- scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$Average_Amount-scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$STD*2
+
+# Trans fat 2 Standard Deviation less than Mean 
+scenario[which(scenario$Nutrient=="FATTY ACIDS, TRANS, TOTAL"),]$Scenario3<- scenario[which(scenario$Nutrient=="FATTY ACIDS, TRANS, TOTAL"),]$Average_Amount-scenario[which(scenario$Nutrient=="FATTY ACIDS, TRANS, TOTAL"),]$STD*2
+
+
+# Sugar 2 Standard Deviation less than Mean 
+scenario[which(scenario$Nutrient=="SUGARS, TOTAL"),]$Scenario3<- scenario[which(scenario$Nutrient=="SUGARS, TOTAL"),]$Average_Amount-scenario[which(scenario$Nutrient=="SUGARS, TOTAL"),]$STD*2
+
+scenario[which(scenario$Nutrient=="SODIUM"),]$Scenario3<-2.3
+
+```
+
+#### 2) Find the cluster for scenario 3
+
+```{r,include=F}
+tempp=data.frame(t(scenario$Scenario3))
+oldn=names(tempp)
+newn=names(data_mean_imp_scale)
+s3_temp=tempp %>% rename_at(vars(oldn), ~ newn)
+
+# data including scenario 1 
+s3<-rbind(data_mean_imp_scale,s3_temp)
+
+# kmeans 
+pca <- prcomp(s3,center=TRUE,scale.=TRUE)
+data.mean.imp.spectrum.kmeans<- kmeans(x = pca$x[,1:10], 8)
+
+data.mean.imp.spectrum.kmeans$cluster[5691] # belongs to 3
+
+# Plot 
+centers=as.data.frame(data.mean.imp.spectrum.kmeans$centers)
+
+p <- data.table(x = pca$x[,1], 
+                y = pca$x[,2],
+                col = as.factor(data.mean.imp.spectrum.kmeans$cluster)) %>%
+  ggplot() + geom_point(aes(x = x, y = y, col = col))+
+  scale_color_manual(values = scales::hue_pal()(8))+theme_bw() + labs(color = "Food Clusters") +xlab("PC1 scores") + ylab("PC2 scores") +ggtitle("8 Food Clusters Based on 10 PCs") + theme(plot.title =element_text(hjust =0.5))+geom_point(data=centers,aes(x="PC1",y="PC2",cex=20),show.legend=F)+  ggplot2::annotate(geom = "text",x=centers$PC1,y=centers$PC2,label = paste0("Center", 8), hjust = "left", fontface = "bold", size = 4) 
+
+```
+#### 3) 10 food Recommendations from Cluster 3
+```{r}
+# Get row numbers for each cluster 
+temp1<-s3%>% mutate(cluster=data.mean.imp.spectrum.kmeans$cluster)
+
+# Case 1 belongs to cluster 5
+rownum5=as.numeric(rownames(temp1[temp1$cluster==3,]))
+random_sample <- sample(length(rownum5),10)
+wide_data$FoodDescription[random_sample]
+
+```
 
 ### 4. Theoretically Driven Nutrients & Spectrum Clustering 
 - Choose the most crucial nutrients (https://www.medicalnewstoday.com/articles/326132) and run clustering based on them
