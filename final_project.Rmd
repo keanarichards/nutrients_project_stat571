@@ -1,5 +1,5 @@
 ---
-title: "Using machine learning to promote healthy eating"
+title: "Recommendations for an intelligent diet"
 author: "Keana Richards, Jeesung Ahn, Tonah Salas Ortiz"
 date: ' '
 output:
