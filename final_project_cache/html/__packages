@@ -24,3 +24,9 @@ pROC
 stargazer
 sjPlot
 report
+NLP
+tm
+SnowballC
+RColorBrewer
+wordcloud
+imputeTS

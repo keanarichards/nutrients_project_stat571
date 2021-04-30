@@ -1258,14 +1258,14 @@ Since the goal of clustering is to minimize the total within-cluster sum of squa
 (data_mean_imp.kmeans$betweenss/data_mean_imp.kmeans$totss)*100
 # Within cluster SS
 
-data_mean_imp.kmeans$withinss
+mean(data_mean_imp.kmeans$withinss)
 
 # spectrum clustering
 # Between cluster SS
 (data.mean.imp.spectrum.kmeans$betweenss/data.mean.imp.spectrum.kmeans$totss)*100
 # Within cluster SS
 
-data.mean.imp.spectrum.kmeans$withinss
+mean(data.mean.imp.spectrum.kmeans$withinss)
 
 ```
 
@@ -1343,6 +1343,14 @@ temp1<-s1%>% mutate(cluster=data.mean.imp.spectrum.kmeans$cluster)
 rownum5=as.numeric(rownames(temp1[temp1$cluster==5,]))
 random_sample <- sample(length(rownum5),10)
 wide_data$FoodDescription[random_sample]
+
+```
+
+#### Euclidean distance
+
+```{r}
+wide_data$FoodDescription[rownum5]
+
 
 ```
 
