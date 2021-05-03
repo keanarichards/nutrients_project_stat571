@@ -52,13 +52,35 @@ Many countries around the world provide nationwide dietary guidelines to the pub
 	- create citations in the same way we did before in diabetes project 
 
 
+
+# Study goals
+
+When we started this project we had the general goal of Providing the basis for an algorithm that recommends foods a person should consume based on their nutrition needs. In more concrete terms, we wanted to identify clusters of foods based on their nutrient profile. Although foods are sometimes grouped together, it’s not 100% clear HOW food groups are determined, so food items in a certain group may not necessarily have the same nutrient profile
+A new interpretation of food groupings can change the way diets are currently made - helping people more “intelligent” diet decisions. More specifically, the results of this study could be used to find the list of foods that have the best combination of nutrients based on a person’s dietary needs.
+
 # Methods {#methods}
 
 ## Data Summary /EDA {#eda} 
 
-Our dataset originates from the most recent (updated in 2015) version of the [Canadian Nutrient File](https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/nutrient-data/canadian-nutrient-file-2015-download-files.html). The database contains average values for nutrients in foods available in Canada. These averages are based on the generic versions of a food, unless there is a brand specifically included in the database. This is a bilingual dataset with food names, descriptions, and background information that are in both French and English. One of the major goals in creating this version of the dataset was to update nutrient values for foods that are the largest contributors of sodium to the diet, since one of the major goals of manufacturers is to reduce sodium content of foods. 
+Link to slides, code & database: tinyurl.com/4x43u439
+
+Our dataset originates from the most recent version of the [Canadian Nutrient File](https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/nutrient-data/canadian-nutrient-file-2015-download-files.html) (updated in 2015), provided on the Canadian government site. The database contains average values for nutrients in foods available in Canada, with much of the data coming from the (USDA) National Nutrient Database for Standard Reference. These averages are based on the generic versions of a food, unless there is a brand specifically included in the database. This is a bilingual dataset with food names, descriptions, and background information that are in both French and English (and since none of the team members speak French, we went with the English version). This version of the database was created to update nutrient values for foods that are the largest contributors of sodium to the diet, since one of the major goals of manufacturers is to reduce sodium content of foods.
 
 To this end, the database assesses more than `r nrow(wide_data)` unique foods, ranging from foods such as `r wide_data %>% select(FoodDescription) %>% slice(1)` to `r wide_data %>% select(FoodDescription) %>% slice(174)`, and provides the average nutrient levels per 100 grams. 
+
+
+once we chose the dataset we would use, we had to import it into R: the original data came as a set of separate datasets that had columns with identifiers to link them, so before we could do anything we had to merge them on the unique identifiers and select the main variables of interest: the food labels & the nutrient profile associated with a given food label. 
+
+With this subsetted version of the data, we ran some exploratory data analyses to get a sense of what we were working with. 
+
+First, we noticed that some of the nutrients included are subcomponents of other nutrients. So for instance, there is a total sugars column that is a sum of several columns in the data. in other cases, there are columns that are essentially different ways of measuring the same thing. So for example, there are two metrics for food energy (i.e., kilocalories and kilojoules), where one kilocalorie = 4.184 kilojoules. We decided to leave these variables as they were, since we expected the methods used in our analyses to be able to essentially ignore these redundancies. 
+ 
+
+Also, it is worth noting that there are many values that are missing. For instance, the nutrient biotin only has non-missing values for 0.982% of the rows in the database. To be able to run our target analyses (which requires a dataset with only nonmissing data), we needed to remove the missing values. We used mean imputation for all variables in all subsequent analyses. Mean imputation essentially means that we inserted the mean of a column into any rows in that column that are missing. 
+
+As mentioned before, there are several variables with multiple NA values. Therefore, to be able to run our target analyses, we needed to remove the NA values. We explored two different options for removing NA variables to see whether they would affect the results: mean imputation for all variables or first removing variables with more than 50% of NAs and then using mean imputation on the survived variables. 
+
+We found that the options produced similar results across our different options for mean imputation, so we used the version of the dataset where we used mean imputation for all variables in all subsequent analyses. 
 
 Notably, some of the nutrients included are subcomponents of other nutrients. Or, like the two metrics for food energy (i.e., kcal and kJ), they are just different ways of measuring the same thing (i.e., one kcal = 4.184 kJ)
 
@@ -111,60 +133,89 @@ The foodnamesare only available  in this  version  in  one  lengthwhich does not
 
 ## Analyses {#analyses}
 
-As mentioned before, there are several variables with multiple NA values. Therefore, to be able to run our target analyses, we needed to remove the NA values. We explored two different options for removing NA variables to see whether they would affect the results: mean imputation for all variables or first removing variables with more than 50% of NAs and then using mean imputation on the survived variables. 
 
-We found that the options produced similar results across our different options for mean imputation, so we used the version of the dataset where we used mean imputation for all variables in all subsequent analyses. 
+Since our goal is to identify the *best* algorithm for grouping foods that will help a person plan out their meals to best suit their needs, we compared different approaches to grouping the foods based on their nutrient profiles. That is, we compared different methods to make sure foods are as similar as possible in terms of their nutrient profile (that is, we wanted to maximize in-group similarity), while also making sure foods assigned to different groups have very different nutrient profiles (in other words, minimize out-group similarity). 
 
+The first option we explored to achieve this goal was using k-means clustering on the dataset. K-means clustering is a commonly used unsupervised machine learning algorithm to divide a dataset into pre-specified set of groups (known as clusters in this context). The algorithm assigned foods to clusters based on which assignments will keep the distance between the nutrient profile of each food assigned to a cluster and the mean nutrient profile for a given cluster as low as possible. In other words, it tries to assign foods to clusters that will achieve the highest possible intra-group similarity for the cluster number that we specified. To identify the optimal number of clusters, we used the silhouette method - which essentially compares the quality of clusters produced across a different range of cluster sizes. 
+
+The second approach we explored was using spectrum clustering. Spectrum clustering adds another step right before the k-means clustering approach. Instead of using the raw data to create clusters, spectrum clustering minimizes the number of variables that we cluster on by including a principal components analysis (also known as PCA) right before the clustering analysis. PCA may be especially advantageous when there are a large number of variables you want to cluster on, because it tries to linearly combine the old variables into new ones (aka PC scores) in a way that maximizes the variance. By maximizing variance during PCA, we can reduce the dimensions of the data without losing much information from the original data. Once we had the PC scores, we used the silhouette method like before to identify the optimal number of clusters before running k-means clustering.  
+
+These were the two main approaches that we explored. Since spectrum clustering combines the power of noise reduction through PCA with clustering analyses, we expected beforehand that it would be a better approach for grouping our data. 
+
+Old: 
 Since our goal is to identify the *best* algorithm for grouping foods that will help a person plan out their meals to best suit their needs, we compared different approaches to grouping the foods based on their nutrient profiles. That is, we wanted to maximize within-group similarity, while also minimizing between-group similarity, in nutrient profiles across different food groups. The first option we explored to achieve this goal was by applying k-means clustering to both versions of the dataset using the silhouette method to identify the optimal number of clusters. (briefly EXPLAIN LOGIC BEHIND THIS METHOD). 
 
   We will run spectrum clustering to see which foods are grouped together based on their nutrient profile. In doing so, we want to find out whether we can find clear-cut clusters of foods based on nutrition profile regardless of actual food group assignment. Our grouping results can be used to find the list of foods that contain the best combination of nutrients based on a persons dietary needs. This improves upon diets that try to rely on the actual food grouping, since our grouping result will be a better representation of the nutrient profile of a set of foods than the food group label, which may be determined arbitrarily.
   Since we have large dimensions of data (153 nutrient information for `r nrow(wide_data)` unique foods), we are going to run principal component analysis (PCA) to
 
-
 Then, ran analysis on theoretically-driven set of nutrients (based on [WHO](https://www.medicalnewstoday.com/articles/326132)). 
-
-#### ** Which results to report? : compare Regular vs. Spectrum Clustering
 
 # Results
 
-Will only describe one mean imputation result (probably the one that best maximizes within similarity and minimizes between similarity across the different approaches. 
+## Comparing k-means clustering to spectrum clustering 
+### First approach: K means clustering on all available nutrients
 
-First approach: K means clustering on all available nutrients
 Describe:
 - characteristics of cluster - size of cluster, within & between group SS 
 - plot of the "clustering over two randomly chosen variables" 
-- words clouds
-		- interesting that cluster 1 and cluster 8 both have dehydrated as the common word 
-- mean kcal per cluster 
-		- cluster 6 (seems to be associated with high-sugar foods) --  has highest kcal level 
-- most important nutrients based on PCA 
 
-Second approach: spectrum clustering on all available nutrients
+This plot here shows what the clusters looked like using k-means clustering across two randomly chosen variables: carbs and calories, along with the mean values of each cluster for those variables. As you can see, there isn’t very clear separation between clusters. With the 8 clusters used for k-means clustering, the average of the total within-cluster sum of squares across clusters was pretty big: 2.18 to the ninth (2184371146)
+
+### Second approach: spectrum clustering on all available nutrients
 Describe:
 - results from PCA (scree plot), elbow rule 
 - characteristics of cluster - size of cluster, within & between group SS 
 - plot of the "8 food clusters bsaed on 7 PCs" 
+
+This plot here shows what the clusters looked like using spectrum clustering across the first two PCs, along with labels for the food in each cluster with the highest absolute PC1 score. The separation between clusters here is more obvious, which is supported by the lower average of the total within-cluster sum of squares across clusters for the spectrum clustering, at 22017
+
+
+Thus, our results support our hypothesis that spectrum clustering would provide much better groups of foods, maximizing the similarity of nutrient profiles of foods within any given cluster. 
+
+# Exploring "intelligent" clusters
+
+We plotted different words clouds of the most commonly used words within each cluster. So for instance, here you can see that the most commonly used word in cluster 2 by far was “raw”, along with “meat” “lean” and “beef”. this cloud tends to have more meats, so it will likely have a higher protein content compared to other clusters. 
+
+
+We also explored which groups tend to have the highest calorie content - and by far the highest calorie groups were clusters 3 and 4. So if someone was trying to reduce their overall calorie intake, it may be a good idea to avoid these food groups. 
+
 - words clouds
 		- results are bsaically the samee here  
 - mean kcal per cluster 
 - most important nutrients based on PCA 
 
-Third approach: spectrum clustering on theoretically-driven nutrients 
+
+## Spectrum clustering on theoretically-driven nutrients 
 Describe:
 - plot of the "clustering over two randomly chosen variables" 
 - words clouds
 - mean kcal per cluster 
 - most important nutrients based on PCA 
 
-Once we've decided on the best method - Make recommendation for a person who has certain dietary needs 
+## Case studies 
+Once we've decided on the best method - Make recommendation for a person who has certain dietary needs. next, we’ll briefly demonstrate how these results can be used to provide “intelligent” recommendations based on a person's dietary needs. 
 
 
+So to give you an example of how we might use this analysis, I’d like to introduce you to Arnold. He’s an aspiring pro bodybuilder that is interested in gaining muscle. 
+
+We’ll walk you through how he might use our food groups to help him achieve his fitness goals. 
+
+Since Mark is currently 180 pounds and a person that wants to gain muscle is recommended to consume 1.5g of protein per pound of bodyweight, his target daily intake of protein is 270 grams/day. it is also recommended that people consume between 2-3g/pound to gain muscle so in Mark’s case, it is recommended that he consumes between 360-540 grams/day. Finally, it is recommended that he should consume at least 3600 calories per day to gain muscle. To provide our recommendation, we tried to identify the cluster that most closely matched Mark’s nutrient needs (that is, his goal nutrient profile had the smallest euclidean distance from the food group). Based on our analyses, Mark would best achieve his goals by eating foods in cluster 5. So we recommend Mark target foods like, turkey, brussel sprouts, and pork, all of which are found in cluster 5. 
+
+
+
+Although we chose to focus on two specific examples of the practical uses of this work, there are a number of other contexts that are relevant: sports nutrition, helping athletes perform better by recommending the foods that best satisfy their needs
+it can also be used by the general public for muscle gain and fat loss
+finally it can help patients of chronic illness identify groups of foods that help improve their medical condition
 
 - possibly use this package: https://github.com/easystats/parameters
 - use tab_model or stargazer for showing regressions (see previous write ups for examples)
 
 
 # Conclusion {#conclusion} 
+
+Our results support our a priori hypothesis that spectrum clustering would provide much better groups of foods, maximizing the similarity of nutrient profiles of foods within any given cluster. 
+
 
 chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/file:///C:/Users/keana/OneDrive%20-%20PennO365/Comp_transfer2018/Penn/fourth_yr/nutrients_project_stat571/cnf-fcen-csv/CNF%202015%20users_guide%20EN.pdf
 - The CNF is particularly suited for assessment of diets, recipe development, menu planning when  ingredients  or  menu  items  are  not  specific  and  for  population  nutrition  surveillance activities, where nutrient intake distributions areused to conduct risk assessments such as modeling  for  fortification  proposals.    It  is  also  useful  in  the  initial  stages  of  product development to ensure that nutritional targets can be met. 
