@@ -83,11 +83,42 @@ These were the two main clustering approaches that we compared. Since spectrum c
 ## Comparing k-means clustering to spectrum clustering 
 ### First approach: K means clustering on all available nutrients
 
+The silhouette method recommended we use 8 clusters, so we ran k-means clustering using `kmeans()` with centers set to 8. Once created, we explored some of the characteristics of the clusters. First, there is a wide range in the number of foods assigned to each cluster, with the largest cluster consisting of `r max(data_mean_imp.kmeans$size)` and the smallest cluster consisting of `r min(data_mean_imp.kmeans$size)`, and a median cluster size of `r median(data_mean_imp.kmeans$size)`. Ideally, the between-cluster sum of squares should be a large proportion of the total sum of squares (the total distance of all observations from the global center) (https://stats.stackexchange.com/questions/82776/what-does-total-ss-and-between-ss-mean-in-k-means-clustering), which would suggest that there is high separation between groups. (data_mean_imp.kmeans$betweenss/data_mean_imp.kmeans$totss)*100
+
+https://www.datanovia.com/en/lessons/cluster-validation-statistics-must-know-methods/
+
 Describe:
 - characteristics of cluster - size of cluster, within & between group SS 
 - plot of the "clustering over two randomly chosen variables" 
 
 This plot here shows what the clusters looked like using k-means clustering across two randomly chosen variables: carbs and calories, along with the mean values of each cluster for those variables. As you can see, there isn’t very clear separation between clusters. With the 8 clusters used for k-means clustering, the average of the total within-cluster sum of squares across clusters was pretty big: 2.18 to the ninth (2184371146)
+
+
+
+```{r}
+## install & load clValid package 
+
+# install.packages("clValid")
+# library(clValid)
+
+data_mean_imp_standardized<- data_mean_imp_standardized[, -c(146, 152)]
+data_mean_imp.kmeans.standardized <- clValid(data_mean_imp_standardized, nClust = 2:10,
+clMethods = "kmeans", validation = "internal", maxitems = 6000)
+
+data_mean_imp.kmeans.version2 <- clValid(data_mean_imp, nClust = 2:10,
+clMethods = "kmeans", validation = "internal", maxitems = 6000)
+
+## mean silhouette for reg k means clusterse
+ss <- cluster::silhouette(data_mean_imp.kmeans$cluster, dist(data_mean_imp))
+mean(ss[, 3])
+
+## mean silhouette for spectrum clustering
+ss1 <- cluster::silhouette(data.mean.imp.spectrum.kmeans$cluster, dist(pca$x[,1:10]))
+mean(ss1[, 3])
+
+
+
+```
 
 ### Second approach: spectrum clustering on all available nutrients
 Describe:
@@ -97,8 +128,9 @@ Describe:
 
 This plot here shows what the clusters looked like using spectrum clustering across the first two PCs, along with labels for the food in each cluster with the highest absolute PC1 score. The separation between clusters here is more obvious, which is supported by the lower average of the total within-cluster sum of squares across clusters for the spectrum clustering, at 22017
 
-### Summary of results
-Thus, our results support our hypothesis that spectrum clustering would provide much better groups of foods, maximizing the similarity of nutrient profiles of foods within any given cluster. 
+### Spectrum clustering provides better clusters 
+
+Since the goal of clustering is to maximize intra-group similarity, we identify which of the results has the smallest average total within-cluster sum of squares across clusters to determine which option might be better. Thus, our results support our hypothesis that spectrum clustering would provide much better groups of foods, maximizing the similarity of nutrient profiles of foods within any given cluster. 
 
 ## Exploring "intelligent" clusters
 
