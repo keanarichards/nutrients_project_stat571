@@ -86,6 +86,10 @@ data_mean_imp_temp<-wide_data %>% select(-c(FoodID,FoodGroupID,FoodDescription,F
 data_mean_imp<-imputeTS::na_mean(data_mean_imp_temp,option="mean")
 data_mean_imp_standardized<-data.frame(scale(data_mean_imp,center=T, scale=T))
 
+data_mean_imp_standardized<- data_mean_imp_standardized[, -c(146, 152)]
+
+
+
 # head(data_mean_imp)
 # NA inspection per column: sapply(wide_data, function(x) sum(is.na(x)))
 
@@ -1205,23 +1209,20 @@ His current weight: 180lbs
 ```{r,include=FALSE}
 # create nutrient data for Mark
 
-scenario=data.frame(Nutrient=names(data_mean_imp_scale),Average_Amount=colMeans(data_mean_imp_scale), STD=apply(data_mean_imp_scale,2,sd)) 
+scenario=data.frame(Nutrient=names(data_mean_imp_standardized),Average_Amount=colMeans(data_mean_imp_standardized), STD=apply(data_mean_imp_standardized,2,sd)) 
 
 scenario['Scenario1']=scenario$Average_Amount
 
-scenario[which(scenario$Nutrient=="PROTEIN"),]$Scenario1 <-270
-scenario[which(scenario$Nutrient=="CARBOHYDRATE, TOTAL (BY DIFFERENCE)"),]$Scenario1 <-450
+scenario[which(scenario$Nutrient=="ENERGY (KILOCALORIES)"),]$Scenario1 <-scenario[which(scenario$Nutrient=="ENERGY (KILOCALORIES)"),]$Average_Amount*1.32
 
-# Saturated fat 2 Standard Deviation from Mean 
-scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$Scenario1<-scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$STD*2 + scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$Average_Amount
-  
-# Other important nutrients 2 Standard Deviation from Mean : calcium, biotin, iron, vitamin C, selenium, Omega 3, vitaim D, vitamin B12, copper, magnesium, riboflavin, zinc 
 
-recom=c("CALCIUM","BIOTIN","IRON","VITAMIN C","SELENIUM","VITAMIN D (INTERNATIONAL UNITS)","VITAMIN B-12","COPPER","MAGNESIUM","RIBOFLAVIN","ZINC")
+scenario[which(scenario$Nutrient=="CARBOHYDRATE, TOTAL (BY DIFFERENCE)"),]$Scenario1<-scenario[which(scenario$Nutrient=="CARBOHYDRATE, TOTAL (BY DIFFERENCE)"),]$Average_Amount*1.2
 
-for (i in recom){
-scenario[which(scenario$Nutrient==i),]$Scenario1<-scenario[which(scenario$Nutrient==i),]$STD*2 + scenario[which(scenario$Nutrient==i),]$Average_Amount}
+scenario[which(scenario$Nutrient=="PROTEIN"),]$Scenario1<-scenario[which(scenario$Nutrient=="PROTEIN"),]$Average_Amount*4.15
 
+scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$Scenario1<-scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$Average_Amount*270
+
+scenario[which(scenario$Nutrient=="FAT (TOTAL LIPIDS)"),]$Scenario1<-scenario[which(scenario$Nutrient=="FAT (TOTAL LIPIDS)"),]$Average_Amount*10.8
 
 ```
 #### 2) Find the cluster for scenario 1
@@ -1229,17 +1230,22 @@ scenario[which(scenario$Nutrient==i),]$Scenario1<-scenario[which(scenario$Nutrie
 ```{r,include=F}
 tempp=data.frame(t(scenario$Scenario1))
 oldn=names(tempp)
-newn=names(data_mean_imp_scale)
+newn=names(data_mean_imp_standardized)
 s1_temp=tempp %>% rename_at(vars(oldn), ~ newn)
 
 # data including scenario 1 
-s1<-rbind(data_mean_imp_scale,s1_temp)
+s1<-rbind(data_mean_imp_standardized,s1_temp)
 
-# kmeans 
+set.seed(0)
+# spectrum kmeans 
 pca <- prcomp(s1,center=TRUE,scale.=TRUE)
 data.mean.imp.spectrum.kmeans<- kmeans(x = pca$x[,1:10], 8)
 
-data.mean.imp.spectrum.kmeans$cluster[5691] # belongs to 5
+data.mean.imp.spectrum.kmeans$cluster[5691] 
+
+# regular kmeans
+data.mean.imp.kmeans<- kmeans(x=s1, 8)
+data.mean.imp.kmeans$cluster[5691] 
 
 # Plot 
 centers=as.data.frame(data.mean.imp.spectrum.kmeans$centers)
@@ -1251,25 +1257,27 @@ p <- data.table(x = pca$x[,1],
   scale_color_manual(values = scales::hue_pal()(8))+theme_bw() + labs(color = "Food Clusters") +xlab("PC1 scores") + ylab("PC2 scores") +ggtitle("8 Food Clusters Based on 10 PCs") + theme(plot.title =element_text(hjust =0.5))+geom_point(data=centers,aes(x="PC1",y="PC2",cex=20),show.legend=F)+  ggplot2::annotate(geom = "text",x=centers$PC1,y=centers$PC2,label = paste0("Center", 8), hjust = "left", fontface = "bold", size = 4) 
 
 ```
-#### 3) 10 food Recommendations from Cluster 5
+#### 3) 10 food Recommendations 
 ```{r}
 # Get row numbers for each cluster 
-temp1<-s1%>% mutate(cluster=data.mean.imp.spectrum.kmeans$cluster)
+temp1<-s1%>% mutate(cluster=data.mean.imp.kmeans$cluster)
+clst_results<-data.mean.imp.kmeans$cluster[5691] 
+clst_center<-data.frame(data.mean.imp.kmeans$centers[data.mean.imp.kmeans$cluster[5691],])
 
-# Case 1 belongs to cluster 5
-rownum5=as.numeric(rownames(temp1[temp1$cluster==5,]))
-random_sample <- sample(length(rownum5),10)
-wide_data$FoodDescription[random_sample]
+distance_from_centers=data.frame()
+
+for (i in 1:dim(s1)[1]){distance_from_centers[i,1]=dist(rbind(clst_center[,1],data.frame(t(s1[i,]))[,1]),method="euclidean")}
+
+foodname=data.frame(wide_data$FoodDescription)
+foodname[5691,1]<-"NA"
+
+distance_from_centers %>% mutate("Food"=foodname[,1]) %>% arrange(V1)
+
 
 ```
 
 #### Euclidean distance
 
-```{r}
-wide_data$FoodDescription[rownum5]
-
-
-```
 
 
 #### Scenario 2. Going on a keto diet & lose weight, particularly fat  
