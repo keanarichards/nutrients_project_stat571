@@ -22,7 +22,7 @@ options(scipen = 0, digits = 3, tibble.print_max = 50)
 knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning = F)
 
 if(!require("pacman")) install.packages("pacman")
-pacman::p_load(tidyverse, here, glmnet, car, data.table, summarytools, corrplot, GGally, varhandle, gtsummary, pROC, stargazer, sjPlot, report,tm,SnowballC,wordcloud,RColorBrewer, imputeTS) 
+pacman::p_load(tidyverse, here, glmnet, car, data.table, summarytools, corrplot, GGally, varhandle, gtsummary, pROC, stargazer, sjPlot, report,tm,SnowballC,wordcloud,RColorBrewer, imputeTS, clValid, cluster, factoextra, fpc) 
 
 
 plot_aes = theme_minimal() +
@@ -31,10 +31,12 @@ plot_aes = theme_minimal() +
         axis.text = element_text(color = "black"),
         axis.line = element_line(colour = "black"),
         axis.ticks.y = element_blank())
+```
 
-# run code ---------------------------------------------------------------
 
-source(here("source.R"))
+```{r include=F}
+
+source(here("source", "primary_analyses.R"))
 ```
 
 # Executive Summary {#executive-summary}
@@ -44,13 +46,12 @@ Many countries around the world provide nationwide dietary guidelines to the pub
 # Introduction {#introduction} 
 
 ## Importance of nutrition in affecting everyday life 
-- make sure to include citations - showing why this research matters (can you send me PDFs of the citations you include so I can include them in the final project doc)
-	- create citations in the same way we did before in diabetes project 
 
+One of the most important determinants of one's health is their diet: the nutrients we consume can affect a range of our health outcomes, from cardiovascular disease [@ShantaRetelny2008] and obesity [@Popkin2004] to learning and general brain function [@Dani2005]. Unfortunately, many people around the world are not consuming enough of the nutrients that promote their health, and instead their diet consists mainly of too much of the nutrients that directly hurt their health [@Popkin2004]. In many cases, across the United States and similarly wealthy countries, people are simply overwhelmed by the overabundance of food options available to them, so they end up choosing whatever is easiest and/or fastest to consume, leading to the popularity of "fast food". Given the importance of choosing the nutrients in our diet, helping people narrow down the range of options for foods by creating categories of foods that are similar will likely free up time to make better diet decisions.  
 
 ## Problem with current food groupings 
 
-Although foods are grouped together in different categories, the means by which these food groupings are created is unclear, so food items in a certain group may not necessarily have the same nutrient profile. A new interpretation of food groupings can change the way diets are currently made - helping people make more “intelligent” diet decisions. More specifically, the results of this study can be used to find the list of foods that have the best combination of nutrients based on a person's dietary needs.
+Although foods are already grouped together in different categories in many nutrition datasets, the means by which these food groupings are created is unclear, so food items in a certain group may not necessarily have the same nutrient profile. A new interpretation of food groupings can change the way diets are currently made - helping people make more “intelligent” diet decisions. More specifically, the results of this study can be used to find the list of foods that have the best combination of nutrients based on a person's dietary needs.
 
 # Study goals
 
@@ -72,108 +73,118 @@ Also, it is worth noting that there are many values that are missing. For instan
 
 Since our goal is to identify the *best* algorithm for grouping foods that will help a person plan out their meals to best suit their needs, we compared different approaches to grouping the foods based on their nutrient profiles. That is, we compared different methods to make sure foods are as similar as possible in terms of their nutrient profile (that is, we wanted to maximize in-group similarity), while also making sure foods assigned to different groups have very different nutrient profiles (in other words, minimize out-group similarity). The slides, code, and database associated with this project is publicly available [here](tinyurl.com/4x43u439). 
 
-The first option we explored to achieve this goal was using k-means clustering on the dataset. K-means clustering is a commonly used unsupervised machine learning algorithm to divide a dataset into pre-specified set of groups (known as clusters in this context). The algorithm assigned foods to clusters based on which assignments will keep the distance between the nutrient profile of each food assigned to a cluster and the mean nutrient profile for a given cluster as low as possible. In other words, it tries to assign foods to clusters that will achieve the highest possible intra-group similarity for the cluster number that we specified. To identify the optimal number of clusters, we used the silhouette method - which essentially compares the quality of clusters produced across a different range of cluster sizes. 
+The first option we explored to achieve this goal was using k-means clustering on the dataset. K-means clustering is a commonly used unsupervised machine learning algorithm to divide a dataset into pre-specified set of groups (known as clusters in this context). The algorithm assigned foods to clusters based on which assignments will keep the distance between the nutrient profile of each food assigned to a cluster and the mean nutrient profile for a given cluster as low as possible. In other words, it tries to assign foods to clusters that will achieve the highest possible intra-group similarity for the cluster number that we specified. To identify the optimal number of clusters, we used the silhouette method - which essentially compares the quality of clusters produced across a different range of cluster sizes. To make this comparison, the silhouette method calculates the average silhouette width for a given cluster size, *k*. The silhouette width is a measure of the average distance between clusters, where higher values are a sign of good clustering. 
 
 The second approach we explored was using spectrum clustering. Spectrum clustering adds another step right before the k-means clustering approach. Instead of using the raw data to create clusters, spectrum clustering minimizes the number of variables that we cluster on by including a principal components analysis (also known as PCA) right before the clustering analysis. PCA may be especially advantageous when there are a large number of variables you want to cluster on, because it tries to linearly combine the old variables into new ones (aka PC scores) in a way that maximizes the variance. By maximizing variance during PCA, we can reduce the dimensions of the data without losing much information from the original data. Once we had the PC scores, we used the silhouette method like before to identify the optimal number of clusters before running k-means clustering.  
 
-These were the two main clustering approaches that we compared. Since spectrum clustering combines the power of noise reduction through PCA with clustering analyses, we expected beforehand that it would be a better approach for grouping our data. 
+These were the two main clustering approaches that we compared. Since spectrum clustering combines the power of noise reduction through PCA with clustering analyses, we expected beforehand that it would be a better approach for grouping our data. For both sets of analyses we standardized the data beforehand, since all nutrient values are measured in different units. 
 
 # Results
 
 ## Comparing k-means clustering to spectrum clustering 
 ### First approach: K means clustering on all available nutrients
 
-The silhouette method recommended we use 8 clusters, so we ran k-means clustering using `kmeans()` with centers set to 8. Once created, we explored some of the characteristics of the clusters. First, there is a wide range in the number of foods assigned to each cluster, with the largest cluster consisting of `r max(data_mean_imp.kmeans$size)` and the smallest cluster consisting of `r min(data_mean_imp.kmeans$size)`, and a median cluster size of `r median(data_mean_imp.kmeans$size)`. Ideally, the between-cluster sum of squares should be a large proportion of the total sum of squares (the total distance of all observations from the global center) (https://stats.stackexchange.com/questions/82776/what-does-total-ss-and-between-ss-mean-in-k-means-clustering), which would suggest that there is high separation between groups. (data_mean_imp.kmeans$betweenss/data_mean_imp.kmeans$totss)*100
-
-https://www.datanovia.com/en/lessons/cluster-validation-statistics-must-know-methods/
-
-Describe:
-- characteristics of cluster - size of cluster, within & between group SS 
-- plot of the "clustering over two randomly chosen variables" 
-
-This plot here shows what the clusters looked like using k-means clustering across two randomly chosen variables: carbs and calories, along with the mean values of each cluster for those variables. As you can see, there isn’t very clear separation between clusters. With the 8 clusters used for k-means clustering, the average of the total within-cluster sum of squares across clusters was pretty big: 2.18 to the ninth (2184371146)
-
-
+The silhouette method recommended we use 8 clusters (see appendix), so we ran k-means clustering using `kmeans()` with centers set to 8. Once created, we explored some of the characteristics of the clusters. First, there is a wide range in the number of foods assigned to each cluster, with the largest cluster consisting of `r max(data_mean_imp.kmeans$size)` and the smallest cluster consisting of `r min(data_mean_imp.kmeans$size)`, and a median cluster size of `r median(data_mean_imp.kmeans$size)`. Ideally, the between-cluster sum of squares should be a large proportion of the total sum of squares (the total distance of all observations from the global center) (https://stats.stackexchange.com/questions/82776/what-does-total-ss-and-between-ss-mean-in-k-means-clustering), which would suggest that there is high separation between groups. In this case, we find that between-cluster sum of squares (`r data_mean_imp.kmeans$betweenss`) explains more than half (`r data_mean_imp.kmeans$betweenss/data_mean_imp.kmeans$totss*100`%) of the total sum of squares (`r data_mean_imp.kmeans$totss`). The plot below shows what the clusters looked like using k-means clustering across two randomly chosen variables: carbs and calories, along with the mean values of each cluster for those variables.
 
 ```{r}
-## install & load clValid package 
-
-# install.packages("clValid")
-# library(clValid)
-
-data_mean_imp_standardized<- data_mean_imp_standardized[, -c(146, 152)]
-data_mean_imp.kmeans.standardized <- clValid(data_mean_imp_standardized, nClust = 2:10,
-clMethods = "kmeans", validation = "internal", maxitems = 6000)
-
-data_mean_imp.kmeans.version2 <- clValid(data_mean_imp, nClust = 2:10,
-clMethods = "kmeans", validation = "internal", maxitems = 6000)
-
-## mean silhouette for reg k means clusterse
-ss <- cluster::silhouette(data_mean_imp.kmeans$cluster, dist(data_mean_imp))
-mean(ss[, 3])
-
-## mean silhouette for spectrum clustering
-ss1 <- cluster::silhouette(data.mean.imp.spectrum.kmeans$cluster, dist(pca$x[,1:10]))
-mean(ss1[, 3])
-
-
-
+clusterplot1
 ```
 
 ### Second approach: spectrum clustering on all available nutrients
+
+Before we 
+
 Describe:
 - results from PCA (scree plot), elbow rule 
 - characteristics of cluster - size of cluster, within & between group SS 
 - plot of the "8 food clusters bsaed on 7 PCs" 
 
-This plot here shows what the clusters looked like using spectrum clustering across the first two PCs, along with labels for the food in each cluster with the highest absolute PC1 score. The separation between clusters here is more obvious, which is supported by the lower average of the total within-cluster sum of squares across clusters for the spectrum clustering, at 22017
+The plot below shows what the clusters looked like using spectrum clustering across the first two PCs, along with labels for the food in each cluster with the highest absolute PC1 score. The separation between clusters here is more obvious, which is supported by the lower average of the total within-cluster sum of squares across clusters for the spectrum clustering, at 22017
 
-### Spectrum clustering provides better clusters 
+```{r}
+clusterplot3
+```
 
-Since the goal of clustering is to maximize intra-group similarity, we identify which of the results has the smallest average total within-cluster sum of squares across clusters to determine which option might be better. Thus, our results support our hypothesis that spectrum clustering would provide much better groups of foods, maximizing the similarity of nutrient profiles of foods within any given cluster. 
+### Regular k-means clustering provides better clusters 
+
+To compare the k-means and spectrum clustering methods on the quality of clusters they produced, we used different metrics of internal cluster validation to see if one method produced consistently superior clustering results compared to the other. Internal cluster validation is [one of three cluster validation statistics available](https://www.datanovia.com/en/lessons/cluster-validation-statistics-must-know-methods/) to evaluate the quality of cluster results. We chose internal cluster validation metrics because it best aligns with our goal of assessing cluster quality without using an external point of comparison, which would be considered external cluster validation (i.e., comparing whether the food groups we created actually align with the foods groups listed in the dataset). We are more interested in creating *new* high quality clusters using nutrient profiles, rather than trying to predict which of the previously established food groups a food would fall into based on its nutrient profile. 
+
+The first internal validation metric we used is identical to the one we used to identify the optimal number of clusters before running our main clustering analyses: average silhouette width. The first plot below shows the silhouette width across all 8 clusters used for regular k-means clustering, while the second plot below shows the silhouette width across all 8 clusters used for spectrum clustering. As shown in the plots, the average silhouette width for the regular k-means clustering (`r mean_ss`) is higher compared to that for the spectrum clustering (`r mean_ss1`), providing tentative evidence that the regular k-means clustering provides better clusters compared to spectrum clustering.  
+
+```{r}
+plot_silhouette
+```
+
+```{r}
+plot_silhouette1
+```
+
+To corroborate our findings, we compared the clustering results using a second internal validation metric known as the Dunn index. This metric essentially compares the inter-cluster separation to the intra-cluster compactness, where good clustering results would have a low diameter (i.e., they are highly compact) and a large distance between clusters (i.e., there is high separation). Thus, we want to maximize the Dunn index in our clustering analyses. `r km_stats$dunn` `r km_stats1$dunn`
+
+
+Overall, our results support our hypothesis that spectrum clustering would provide much better groups of foods, maximizing the similarity of nutrient profiles of foods within any given cluster. 
 
 ## Exploring "intelligent" clusters
 
 We plotted different words clouds of the most commonly used words within each cluster. So for instance, here you can see that the most commonly used word in cluster 2 by far was “raw”, along with “meat” “lean” and “beef”. this cloud tends to have more meats, so it will likely have a higher protein content compared to other clusters. 
 
+See appendix for the full set of word clouds for this clustering result 
+```{r}
+knitr::include_graphics(here("figs", "wc6.png"))
+
+```
+
+```{r}
+knitr::include_graphics(here("figs", "wc7.png"))
+```
+
 
 We also explored which groups tend to have the highest calorie content - and by far the highest calorie groups were clusters 3 and 4. So if someone was trying to reduce their overall calorie intake, it may be a good idea to avoid these food groups. 
 
-- words clouds
-		- results are bsaically the samee here  
-- mean kcal per cluster 
-- most important nutrients based on PCA 
+```{r}
+kcal_cluster1
+```
+
+- most important nutrients based on PCA (see appendix)
 
 ## Spectrum clustering on theoretically-driven nutrients 
 Describe:
 - plot of the "clustering over two randomly chosen variables" 
-- words clouds
-- mean kcal per cluster 
-- most important nutrients based on PCA 
-
-## Case studies 
-
-After determining the best clustering approach based on food nutrient profile, we provide two case studies to serve as examples of how this tool can be used to make recommendations for a person who has specific dietary needs. 
-
-### Case study 1. Following a diet to gain muscle 
-
-Arnold is an aspiring professional bodybuilder that is interested in gaining muscle as quickly as possible. Since he knows the importance of nutrition in affecting the muscle-building process, he plans to change his diet to achieve this goal and has decided to follow the guidance he found at the links [here](https://www.coachmag.co.uk/nutrition/healthy-eating/1263/12-best-nutrients-and-vitamins-building-muscle-and-burning-fat) and [here](https://www.muscleandfitness.com/nutrition/gain-mass/10-nutrition-rules-follow-if-you-want-build-muscle/). Since Arnold is currently 180 pounds and a person that wants to gain muscle is recommended to consume 1.5 grams of protein per pound of bodyweight, his target daily intake of protein is 270 grams per day. It is also recommended that people consume between 2-3 grams of carbohydrates per pound to gain muscle. Therefore, Arnold aims to consume between 360 and 540 grams of total carbohydrates per day. Fat is another important macronutrient that will affect Arnold's muscle-building process. Since the articles he found suggest between 20 and 30 percent of his calories should come from fat, he aims to consume X grams of fat per day. Finally, it is recommended that he consume at least 3600 kilocalories per day to gain muscle. There are also several other nutrients that he would like to consume at above 2 SDs above the mean based on their muscle-building properties including: calcium, biotin, iron, vitamin C, selenium, Omega 3, Vitamin D, vitamin B12, copper, magnesium, riboflavin, and zinc. 
-
-To simulate Arnold, we created a copy of the dataset from our main analyses and compare the macronutrient breakdown of Arnold to the daily nutrient recommendations based on his age and gender, and use that as point of comparison. eg compared to most people, arnold's diet will be relatively high in protein, low in carbs, and average in fat. So use multiplier, this ensures everything is on the same scale.
-
-To determine a point of comparison for Arnold's nutrient intake, we used the [DRI Calculator for Healthcare Professionals from the National Argicultural Library](https://www.nal.usda.gov/fnic/dri-calculator/). This tool calculates daily nutrient recommendations based on the Dietary Reference Intakes (DRIs) established by the Health and Medicine Division of the National Academies of Sciences, Engineering and Medicine, representing the most current scientific knowledge on nutrient needs. We inserted gender (Male), age  (20), height (5 feet 10 inches), weight (180 pounds), and activity level (sedentary) for someone who matches Arnold on all characteristics *but* activity level, since Arnold will be above the mean on activity level compared to the typical person. Therefore, the nutrient recommendations provided by this tool provide a representation of someone who matches Arnold on all characteristics, but does not aspire to be a pro bodybuilder like he does (and hence has a lower activity level). 
-
-
-multipliers for arnold compared to average person:
-2734 kcal/day = 1.32
-total carbs: 	308 - 444 grams (average is 376) = 1.2
-protein: 65 g = 4.15
-sat fat = 270 times (because they are told to keep it as low as possible so rec for avg person might be 1g)
-total fat = 10.8 
-
-code for ID multipliers for arnold
 
 ```{r}
+clusterplot2 
+```
+
+- words clouds
+
+```{r}
+knitr::include_graphics(here("figs", "wc9.png"))
+
+```
+
+
+```{r}
+knitr::include_graphics(here("figs", "wc10.png"))
+```
+
+- mean kcal per cluster 
+
+```{r}
+kcal_cluster2
+```
+
+- most important nutrients based on PCA (see appendix)
+
+
+## Case study: Following a diet to gain muscle 
+
+After determining the best clustering approach based on food nutrient profile, we provide a case study to serve as examples of how this tool can be used to make recommendations for a person who has specific dietary needs. Arnold is an aspiring professional bodybuilder that is interested in gaining muscle as quickly as possible. Since he knows the importance of nutrition in affecting the muscle-building process, he plans to change his diet to achieve this goal and has decided to follow the guidance he found at the links [here](https://www.coachmag.co.uk/nutrition/healthy-eating/1263/12-best-nutrients-and-vitamins-building-muscle-and-burning-fat) and [here](https://www.muscleandfitness.com/nutrition/gain-mass/10-nutrition-rules-follow-if-you-want-build-muscle/). Since Arnold is currently 180 pounds and a person that wants to gain muscle is recommended to consume 1.5 grams of protein per pound of bodyweight, his target daily intake of protein is 270 grams per day. It is also recommended that people consume between 2-3 grams of carbohydrates per pound to gain muscle. Therefore, Arnold aims to consume between 360 and 540 grams of total carbohydrates per day. Fat is another important macronutrient that will affect Arnold's muscle-building process. Since the articles he found suggest between 20 and 30 percent of his calories should come from fat, he aims to consume X grams of fat per day. Finally, it is recommended that he consume at least 3600 kilocalories per day to gain muscle. There are also several other nutrients that he would like to consume at above 2 standard deviations above the mean based on their muscle-building properties including: calcium, biotin, iron, vitamin C, selenium, Omega 3, Vitamin D, vitamin B12, copper, magnesium, riboflavin, and zinc. 
+
+To simulate Arnold, we created a copy of the dataset from our main analyses and compared Arnold's daily nutrient targets to the daily nutrient recommendations for someone in the general population who matches him on all characteristics except for their level of activity. To determine a point of comparison for Arnold's nutrient intake, we used the [DRI Calculator for Healthcare Professionals from the National Argicultural Library](https://www.nal.usda.gov/fnic/dri-calculator/). This tool calculates daily nutrient recommendations based on the Dietary Reference Intakes (DRIs) established by the Health and Medicine Division of the National Academies of Sciences, Engineering and Medicine, representing the most current scientific knowledge on nutrient needs. We inserted gender (Male), age  (20), height (5 feet 10 inches), weight (180 pounds), and activity level (sedentary) for someone who matches Arnold on all characteristics *but* activity level, since Arnold will be above the mean on activity level compared to the typical person. Therefore, the nutrient recommendations provided by this tool are a representation of someone who matches Arnold on all characteristics, but does not aspire to be a pro bodybuilder like he does (and hence has a lower activity level). The metric of comparison we used is how much larger (or smaller) Arnold's nutrient goals are compared to the recommendations from the DRI Calculator. For instance, Arnold is aiming to consume 3600 kilocalories per day, while it is generally recommended to consume 2734 kilocalories per day for someone like him but is less active. Therefore, Arnold is consuming approximately 1.32 (3600/2734) times the amount of kilocalories recommended. Based on these calculations, Arnold will be consuming 1.2 times the amount of total carbohydrates recommended, 4.15 times the amount of total carbohydrates recommended, 270 times the amount of total saturated fats recommended, and 10.8 times the amount of total total fat recommended. We created nutrient data for Arnold by multiplying the average value of the target nutrient across the entire dataset by the amount Arnold is consuming above the mean (e.g., 1.32 * average value of nutrient across all foods) for kilocalories, total carbohydrates, saturated fats, protein, and total fat. On the other hand, for the list of nutrients above where Arnold generally knows he wants to consume at least 2 standard deviations above the mean (i.e., calcium, biotin, iron, vitamin C, selenium, Omega 3, Vitamin D, vitamin B12, copper, magnesium, riboflavin, and zinc), we calculated and inserted the value representing 2 standard deviations above the mean into Arnold's nutrient data. 
+
+To provide our recommendation, we tried to identify the cluster that most closely matched Arnold’s nutrient needs. That is, we identified the cluster that had the smallest euclidean distance from Arnold's goal nutrient profile. Based on our analyses, Arnold would best achieve his goals by eating foods in cluster 5. So we recommend Arnold target foods like, turkey, brussel sprouts, and pork, all of which are found in cluster 5. 
+
+```{r, eval = F}
 # calories
 
 3600/2734
@@ -197,30 +208,17 @@ mean(c(3600*(.05), 3600*(.1)))
 900/mean(c(61, 106))
 ```
 
-To provide our recommendation, we tried to identify the cluster that most closely matched Arnold’s nutrient needs (that is, his goal nutrient profile had the smallest euclidean distance from the food group). Based on our analyses, Arnold would best achieve his goals by eating foods in cluster 5. So we recommend Arnold target foods like, turkey, brussel sprouts, and pork, all of which are found in cluster 5. 
-
-Although we chose to focus on one specific example of the practical uses of this work, there are a number of other contexts that are relevant: sports nutrition, helping athletes perform better by recommending the foods that best satisfy their needs
-it can also be used by the general public for muscle gain and fat loss
-finally it can help patients of chronic illness identify groups of foods that help improve their medical condition
-
-- possibly use this package: https://github.com/easystats/parameters
-- use tab_model or stargazer for showing regressions (see previous write ups for examples)
-
 # Conclusion {#conclusion} 
 
-Our results support our a priori hypothesis that spectrum clustering would provide much better groups of foods, maximizing the similarity of nutrient profiles of foods within any given cluster. 
+Our results contradict our a priori hypothesis that spectrum clustering would provide much better groups of foods compared to k-means clustering. Using various metrics of internal clustering validation, we find that k-means clustering serves as a better method with this dataset for creating clusters. We explored the final set of clusters through various plots of the most frequently used words in each cluster, along with average calorie count per cluster and most important nutrients in each cluster. 
 
+Our case study with Arnold provides an example of how these results can be used in a real-world context. Although we chose to focus on one specific example of the practical uses of this work, there are a number of other contexts that are relevant. For instance, these results can help patients of chronic illness identify groups of foods that help improve their medical condition. In another case, our results can be used to cluster new foods recently approved by the FDA based on their nutrient content, which may be helpful in grocery stores to determine food placement. On a more individual level, if a person likes a specific food for its nutrient content, they can use our clustering result to help them identify similar foods that they may enjoy. Finally, these results can be used when a person is following a recipe and wants to use a food from a specific cluster, but does not have that ingredient readily available. Using our clustering results, they can identify the foods that are most similar to a missing ingredient replace it easily.
 
-chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/file:///C:/Users/keana/OneDrive%20-%20PennO365/Comp_transfer2018/Penn/fourth_yr/nutrients_project_stat571/cnf-fcen-csv/CNF%202015%20users_guide%20EN.pdf
-- The CNF is particularly suited for assessment of diets, recipe development, menu planning when  ingredients  or  menu  items  are  not  specific  and  for  population  nutrition  surveillance activities, where nutrient intake distributions areused to conduct risk assessments such as modeling  for  fortification  proposals.    It  is  also  useful  in  the  initial  stages  of  product development to ensure that nutritional targets can be met. 
 
 # Limitations {#limitations} 
 
-chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/file:///C:/Users/keana/OneDrive%20-%20PennO365/Comp_transfer2018/Penn/fourth_yr/nutrients_project_stat571/cnf-fcen-csv/CNF%202015%20users_guide%20EN.pdf
-- The exact nutrient  composition  of  a  specific  apple  or  cookie isnot  found  on  the  CNF.    These averages,  except  where  indicated  otherwise,  take  into  account  sources  of  a  given  food across Canada.  Local foods may have a different profile than the national average.
-- Most  users  are  lookingfor  an  average  or  mean  value  for  a  generic  representation  of  the foods  as described.    These generic  values  have  been  derived  from  combining  brands  of similar  products,  for  example  all  major  brands  of  ketchup;  various  varieties  of  oranges  or similar  beef  cuts  from  various  producers.  
-- This dataset is only relevant to products available in Canada - so the results cannot be generalized to products from other countries. Therefore future research should explore whether these findings replicate among products in other countries.
-- the nutrient values are all standardized, not representative of how much a person may actually consume in a package - would need to convert to nutrient values for the actual portions people eat to be interpretable 
+One of the more notable limitations of this work is that the Canadian Nutrient File only provides average amounts of the nutrients for a combination of all available versions of a given food (e.g., average sugar content of all brands of ketchup). Therefore, it is possible that the clustering results here may not be useful in cases where the nutrient profile of a specific brand of food deviates far from the mean.
+Also, this dataset is only relevant to products available in Canada - so the results cannot be generalized to products from other countries. Therefore, future research should explore whether these findings replicate among products in other countries. Another feature of the dataset that may be considered a limitation depending on a person's needs is that the nutrient values are all standardized and thus may not be representative of how much a person may actually consume in a package. A person would need to convert the nutrient values based on the actual portion sizes they eat if they wanted to accurately assess many of their daily nutrient goals their hitting. Finally, in the case study, we had only a proxy for nutrient recommendations based on target nutrient goals. More specifically, we used daily recommended nutrients as the proxy to scale Arnold's nutrient amounts when we created the fake data, but all of the nutrients in our dataset are at the level of an individual food. Therefore, using this tool with food-specific goals may be more appropriate, since our calculations were at a more aggregate level (i.e., "how much above the average are Arnold's nutrient goals?" rather than "how much above the average is this specific food?"). Overall, there are a number of fruitful avenues for future work to extend and improve upon our current analyses. 
 
 # Appendix {#appendix} 
 
@@ -228,7 +226,7 @@ chrome-extension://oemmndcbldboiebfnladdacbdfmadadm/file:///C:/Users/keana/OneDr
 ## Full summary of clean dataset {#clean-data-summary}
 
 ```{r, results = 'asis', cache = T}
-data_mean_imp %>% select(-c(FoodID, FoodGroupID, FoodDescription)) %>% dfSummary(.,  plain.ascii = FALSE, style = 'grid', graph.magnif = 0.75, 
+data_mean_imp %>% dfSummary(.,  plain.ascii = FALSE, style = 'grid', graph.magnif = 0.75, 
           valid.col = FALSE, tmp.img.dir = "/tmp")
 
 ```
@@ -239,14 +237,127 @@ data_mean_imp %>% select(-c(FoodID, FoodGroupID, FoodDescription)) %>% dfSummary
 inspect.na(wide_data, summary = F)
 ```
 
-## Citations for packages used 
+## Optimal number of clusters for k-means clustering on full dataset 
+
+```{r}
+silh_ID1
+```
+
+## Word clouds for k-means clustering on full dataset 
+
+### Cluster 1
+
+```{r}
+knitr::include_graphics(here("figs", "wc1.png"))
+
+```
+
+
+### Cluster 2
+
+```{r}
+knitr::include_graphics(here("figs", "wc2.png"))
+
+```
+
+### Cluster 3
+
+```{r}
+knitr::include_graphics(here("figs", "wc3.png"))
+
+```
+
+### Cluster 4
+
+```{r}
+knitr::include_graphics(here("figs", "wc4.png"))
+
+```
+
+### Cluster 5
+
+```{r}
+knitr::include_graphics(here("figs", "wc5.png"))
+
+```
+
+### Cluster 6
+
+```{r}
+knitr::include_graphics(here("figs", "wc6.png"))
+
+```
+
+### Cluster 7
+
+```{r}
+knitr::include_graphics(here("figs", "wc7.png"))
+```
+
+### Cluster 8
+
+```{r}
+knitr::include_graphics(here("figs", "wc8.png"))
+
+```
+
+## Scree plot from PCA in spectrum clustering on full dataset 
+
+```{r}
+knitr::include_graphics(here("figs", "scree_p1.png"))
+```
+
+
+## Optimal number of clusters for spectrum clustering on 10 PCs on full dataset 
+
+```{r}
+silh_ID3
+```
+
+## Scree plot from PCA in spectrum clustering on theoretically-driven nutrients
+
+```{r}
+knitr::include_graphics(here("figs", "scree_p2.png"))
+```
+
+
+## Optimal number of clusters for spectrum clustering on theoretically-driven nutrients
+
+```{r}
+silh_ID2
+```
+
+
+## Most important nutrients for spectrum clustering on theoretically-driven nutrients
+
+### Cluster 1
+
+```{r}
+
+important_nutrients9
+```
+
+### Cluster 2
+
+```{r}
+
+important_nutrients10
+```
+
+## List of packages used 
 
 ```{r, results = 'asis'}
 
-report(sessionInfo())
+report_packages()
 ```
 
-- possibly use this to write functions 
+
+## Citations for packages used 
+
+```{r, results = 'asis'}
+cite_packages()
+
+```
 
 
 # References

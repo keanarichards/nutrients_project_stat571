@@ -1,4 +1,4 @@
-## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----setup, include=FALSE----------------------------------------------------------------------------------------------------------------------------------------------
 options(scipen = 0, digits = 3, tibble.print_max = 50) 
 
 knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning = F)
@@ -23,7 +23,7 @@ nutrient_name <- read.csv(here("cnf-fcen-csv", "NUTRIENT_NAME.csv"))
 
 
 
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ## creating wide version of data for PCA
 
 ## merging datasets on identifiers
@@ -46,18 +46,22 @@ wide_data <- left_join(food_name_merged, nutrient_amount_wide, by = "FoodID")
 
 
 
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ## creating long version of data for logistic regression
 
 long_data <- wide_data %>% pivot_longer(cols = PROTEIN:`OXALIC ACID`, names_to = "NutrientName", values_to = "NutrientValue")
 
 
 
-## ----dealing with NAs, include=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----dealing with NAs, include=FALSE-----------------------------------------------------------------------------------------------------------------------------------
 ######## data with mean imputation
 data_mean_imp_temp<-wide_data %>% select(-c(FoodID,FoodGroupID,FoodDescription,FoodGroupName))
 data_mean_imp<-imputeTS::na_mean(data_mean_imp_temp,option="mean")
 data_mean_imp_standardized<-data.frame(scale(data_mean_imp,center=T, scale=T))
+
+data_mean_imp_standardized<- data_mean_imp_standardized[, -c(146, 152)]
+
+
 
 # head(data_mean_imp)
 # NA inspection per column: sapply(wide_data, function(x) sum(is.na(x)))
@@ -65,7 +69,7 @@ data_mean_imp_standardized<-data.frame(scale(data_mean_imp,center=T, scale=T))
 # sum(is.na(data_mean_imp))
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 # optimal number of clusters : according to silhouette method, 8 clusters is optimal  
 set.seed(0)
 factoextra::fviz_nbclust(data_mean_imp, kmeans, method = "silhouette")
@@ -76,7 +80,7 @@ print(c('Size of each cluster is', data_mean_imp.kmeans$size))
 
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 centers=as.data.frame(data_mean_imp.kmeans$centers)
 
 ##### randomly choose two variables and plot clustering results (hard coded)
@@ -92,7 +96,7 @@ data.frame(Carb = data_mean_imp$`CARBOHYDRATE, TOTAL (BY DIFFERENCE)`,
 
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 ###### data table with food name + clustering result
 result_regular_kmeans<-wide_data %>% select (FoodDescription) %>%
         mutate(group = data_mean_imp.kmeans$cluster) %>% arrange(group)
@@ -231,7 +235,7 @@ wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.o
 
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 ###### average calory count per cluster
 avg_calories=data_mean_imp %>% mutate(group = data_mean_imp.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
 
@@ -241,7 +245,7 @@ ggplot(avg_calories) +
   theme(plot.title = element_text(hjust = 0.5))
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 # PCA of nutrients 
 data_mean_imp_temp =data_mean_imp %>% mutate(group = data_mean_imp.kmeans$cluster) %>% select(-c("FATTY ACIDS, MONOUNSATURATED, 12:1, LAUROLEIC","NA"))
 
@@ -480,7 +484,7 @@ rbind(pc1_top, pc2_top) %>%
   theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1),plot.title = element_text(hjust = 0.5))
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 ## RUN PCA of nutrient data
 
 pca_unscaled <- prcomp(data_mean_imp,center=TRUE,scale=FALSE)
@@ -510,7 +514,7 @@ plot(summary(pca_unscaled)$importance[3, ], pch=16,
   #   main="Scree Plot of Cumulative PVE for AFQT")
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 ## RUN PCA of nutrient data
 ## In order to scale the data, needed to remove variables with 0 standard deviaion (to solve this error: Error in prcomp.default(data_mean_imp, center = TRUE, scale. = TRUE) : cannot rescale a constant/zero column to unit variance)
 ##  "FATTY ACIDS, MONOUNSATURATED, 12:1, LAUROLEIC" and "NA" were removed for this reason
@@ -547,7 +551,7 @@ plot(summary(pca_scaled)$importance[3, ], pch=16,
 # sanity check : round(cov(pca_scaled$x), 4) ; round(t(pca_scaled$rotation) %*% pca_scaled$rotation)
 
 
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # PC1 and PC2
 pca <- prcomp(data_mean_imp_scale,center=TRUE,scale.=FALSE)
 
@@ -581,7 +585,7 @@ p_scaled
 
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 stdzero=data.frame(apply(data_mean_imp,2,sd))
 whichone=which(stdzero== 0)
@@ -612,7 +616,7 @@ rbind(pc1_top, pc2_top) %>%
 element_text(hjust = 0.5))
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 # optimal number of clusters : according to silhouette method, it's 8.
 set.seed(0)
 factoextra::fviz_nbclust(data_mean_imp_scale, kmeans, method = "silhouette")
@@ -622,7 +626,7 @@ data.mean.imp.spectrum.kmeans<- kmeans(x = pca$x[,1:10], 8)
 
 
 
-## ---- include=F------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- include=F--------------------------------------------------------------------------------------------------------------------------------------------------------
 # Get row numbers for each cluster 
 temp1<-data_mean_imp_scale %>% mutate(cluster=data.mean.imp.spectrum.kmeans$cluster)
 rownum1=as.numeric(rownames(temp1[temp1$cluster==1,]))
@@ -636,7 +640,7 @@ rownum8=as.numeric(rownames(temp1[temp1$cluster==8,]))
 
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 # PC1 and PC2, label= one representative food with highest PC score
 max_pcscore_rownum=
   c(rownum1[which.max(abs(pca$x[rownum1,1]))],
@@ -718,7 +722,7 @@ p2
 
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 ###### data table with food name + clustering result
 result_mean_imp_spectrum_kmeans<-wide_data %>% select (FoodDescription) %>%
         mutate(group = data.mean.imp.spectrum.kmeans$cluster) %>% arrange(group)
@@ -855,7 +859,7 @@ wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.o
 
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 ###### average calory count per cluster
 avg_calories=data_mean_imp_scale %>% mutate(group=data.mean.imp.spectrum.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
 
@@ -867,7 +871,7 @@ ggplot(avg_calories) +
 
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 # PCA of nutrients 
 data_mean_imp_temp1 =data_mean_imp_scale %>% mutate(group = data.mean.imp.spectrum.kmeans$cluster)
 data_mean_imp.c1<-data_mean_imp_temp1[data_mean_imp_temp1$group==1,]%>% select(c(-group))
@@ -1111,7 +1115,7 @@ element_text(hjust = 0.5))
 
 
 
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Regular clustering
 # Between cluster SS
 
@@ -1129,43 +1133,45 @@ mean(data.mean.imp.spectrum.kmeans$withinss)
 
 
 
-## ----include=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----include=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------
 # create nutrient data for Mark
 
-scenario=data.frame(Nutrient=names(data_mean_imp_scale),Average_Amount=colMeans(data_mean_imp_scale), STD=apply(data_mean_imp_scale,2,sd)) 
+scenario=data.frame(Nutrient=names(data_mean_imp_standardized),Average_Amount=colMeans(data_mean_imp_standardized), STD=apply(data_mean_imp_standardized,2,sd)) 
 
 scenario['Scenario1']=scenario$Average_Amount
 
-scenario[which(scenario$Nutrient=="PROTEIN"),]$Scenario1 <-270
-scenario[which(scenario$Nutrient=="CARBOHYDRATE, TOTAL (BY DIFFERENCE)"),]$Scenario1 <-450
+scenario[which(scenario$Nutrient=="ENERGY (KILOCALORIES)"),]$Scenario1 <-scenario[which(scenario$Nutrient=="ENERGY (KILOCALORIES)"),]$Average_Amount*1.32
 
-# Saturated fat 2 Standard Deviation from Mean 
-scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$Scenario1<-scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$STD*2 + scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$Average_Amount
-  
-# Other important nutrients 2 Standard Deviation from Mean : calcium, biotin, iron, vitamin C, selenium, Omega 3, vitaim D, vitamin B12, copper, magnesium, riboflavin, zinc 
 
-recom=c("CALCIUM","BIOTIN","IRON","VITAMIN C","SELENIUM","VITAMIN D (INTERNATIONAL UNITS)","VITAMIN B-12","COPPER","MAGNESIUM","RIBOFLAVIN","ZINC")
+scenario[which(scenario$Nutrient=="CARBOHYDRATE, TOTAL (BY DIFFERENCE)"),]$Scenario1<-scenario[which(scenario$Nutrient=="CARBOHYDRATE, TOTAL (BY DIFFERENCE)"),]$Average_Amount*1.2
 
-for (i in recom){
-scenario[which(scenario$Nutrient==i),]$Scenario1<-scenario[which(scenario$Nutrient==i),]$STD*2 + scenario[which(scenario$Nutrient==i),]$Average_Amount}
+scenario[which(scenario$Nutrient=="PROTEIN"),]$Scenario1<-scenario[which(scenario$Nutrient=="PROTEIN"),]$Average_Amount*4.15
+
+scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$Scenario1<-scenario[which(scenario$Nutrient=="FATTY ACIDS, SATURATED, TOTAL"),]$Average_Amount*270
+
+scenario[which(scenario$Nutrient=="FAT (TOTAL LIPIDS)"),]$Scenario1<-scenario[which(scenario$Nutrient=="FAT (TOTAL LIPIDS)"),]$Average_Amount*10.8
 
 
 
-
-## ----include=F-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----include=F---------------------------------------------------------------------------------------------------------------------------------------------------------
 tempp=data.frame(t(scenario$Scenario1))
 oldn=names(tempp)
-newn=names(data_mean_imp_scale)
+newn=names(data_mean_imp_standardized)
 s1_temp=tempp %>% rename_at(vars(oldn), ~ newn)
 
 # data including scenario 1 
-s1<-rbind(data_mean_imp_scale,s1_temp)
+s1<-rbind(data_mean_imp_standardized,s1_temp)
 
-# kmeans 
+set.seed(0)
+# spectrum kmeans 
 pca <- prcomp(s1,center=TRUE,scale.=TRUE)
 data.mean.imp.spectrum.kmeans<- kmeans(x = pca$x[,1:10], 8)
 
-data.mean.imp.spectrum.kmeans$cluster[5691] # belongs to 5
+data.mean.imp.spectrum.kmeans$cluster[5691] 
+
+# regular kmeans
+data.mean.imp.kmeans<- kmeans(x=s1, 8)
+data.mean.imp.kmeans$cluster[5691] 
 
 # Plot 
 centers=as.data.frame(data.mean.imp.spectrum.kmeans$centers)
@@ -1178,24 +1184,25 @@ p <- data.table(x = pca$x[,1],
 
 
 
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Get row numbers for each cluster 
-temp1<-s1%>% mutate(cluster=data.mean.imp.spectrum.kmeans$cluster)
+temp1<-s1%>% mutate(cluster=data.mean.imp.kmeans$cluster)
+clst_results<-data.mean.imp.kmeans$cluster[5691] 
+clst_center<-data.frame(data.mean.imp.kmeans$centers[data.mean.imp.kmeans$cluster[5691],])
 
-# Case 1 belongs to cluster 5
-rownum5=as.numeric(rownames(temp1[temp1$cluster==5,]))
-random_sample <- sample(length(rownum5),10)
-wide_data$FoodDescription[random_sample]
+distance_from_centers=data.frame()
+
+for (i in 1:dim(s1)[1]){distance_from_centers[i,1]=dist(rbind(clst_center[,1],data.frame(t(s1[i,]))[,1]),method="euclidean")}
+
+foodname=data.frame(wide_data$FoodDescription)
+foodname[5691,1]<-"NA"
+
+distance_from_centers %>% mutate("Food"=foodname[,1]) %>% arrange(V1)
 
 
 
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-wide_data$FoodDescription[rownum5]
 
-
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 scenario['Scenario2']=scenario$Average_Amount
 
 scenario[which(scenario$Nutrient=="ENERGY (KILOCALORIES)"),]$Scenario2 <-2000
@@ -1206,7 +1213,7 @@ scenario[which(scenario$Nutrient=="PROTEIN"),]$Scenario2 <-75
 # scenario[which(scenario$Nutrient=="ENERGY (KILOCALORIES)"),]
 
 
-## ----include=F-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----include=F---------------------------------------------------------------------------------------------------------------------------------------------------------
 tempp=data.frame(t(scenario$Scenario2))
 oldn=names(tempp)
 newn=names(data_mean_imp_scale)
@@ -1232,7 +1239,7 @@ p <- data.table(x = pca$x[,1],
 
 
 
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Get row numbers for each cluster 
 temp1<-s2%>% mutate(cluster=data.mean.imp.spectrum.kmeans$cluster)
 
@@ -1243,7 +1250,7 @@ wide_data$FoodDescription[random_sample]
 
 
 
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 scenario['Scenario3']=scenario$Average_Amount
 
 scenario[which(scenario$Nutrient=="ENERGY (KILOCALORIES)"),]$Scenario3 <-1500
@@ -1276,7 +1283,7 @@ scenario[which(scenario$Nutrient=="SODIUM"),]$Scenario3<-2.3
 
 
 
-## ----include=F-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----include=F---------------------------------------------------------------------------------------------------------------------------------------------------------
 tempp=data.frame(t(scenario$Scenario3))
 oldn=names(tempp)
 newn=names(data_mean_imp_scale)
@@ -1302,7 +1309,7 @@ p <- data.table(x = pca$x[,1],
 
 
 
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Get row numbers for each cluster 
 temp1<-s3%>% mutate(cluster=data.mean.imp.spectrum.kmeans$cluster)
 
@@ -1313,7 +1320,7 @@ wide_data$FoodDescription[random_sample]
 
 
 
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # select crucial nutrients from mean imputed data
 data_mean_imp_crucial=data_mean_imp %>% select(c(starts_with("VIT"),MAGNESIUM,CALCIUM,PHOSPHORUS,POTASSIUM,`CHOLINE, TOTAL`,IRON,SELENIUM,ZINC,MANGANESE,COPPER,MOISTURE,PROTEIN,`CARBOHYDRATE, TOTAL (BY DIFFERENCE)`,`FAT (TOTAL LIPIDS)`,`FATTY ACIDS, TRANS, TOTAL`,`FATTY ACIDS, SATURATED, TOTAL`,`FATTY ACIDS, MONOUNSATURATED, TOTAL`,`FATTY ACIDS, POLYUNSATURATED, TOTAL`,`FATTY ACIDS, TOTAL TRANS-MONOENOIC`,`FATTY ACIDS, TOTAL TRANS-POLYENOIC`,`ENERGY (KILOCALORIES)`))
 
@@ -1324,7 +1331,7 @@ newnames=c("Minerals_MAGNESIUM","Minerals_CALCIUM","Minerals_PHOSPHORUS","Minera
 data_mean_imp_crucial=data_mean_imp_crucial %>% rename_at(vars(oldnames), ~ newnames)
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 ## RUN PCA of nutrient data
 pca <- prcomp(data_mean_imp_crucial,center=TRUE,scale=TRUE)
 
@@ -1339,7 +1346,7 @@ plot(summary(pca)$importance[3, ], pch=16,
 # will use 10 PCs
 
 
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ## plot top 20 loadings
 top_k <- 20
 
@@ -1366,7 +1373,7 @@ element_text(hjust = 0.5))
 
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 # optimal number of clusters : according to silhouette method, it's 2
 set.seed(0)
 factoextra::fviz_nbclust(data_mean_imp_crucial, kmeans, method = "silhouette")
@@ -1375,14 +1382,14 @@ factoextra::fviz_nbclust(data_mean_imp_crucial, kmeans, method = "silhouette")
 data.crucial.mean.imp.spectrum.kmeans<- kmeans(x = pca$x[, 1:10], 2)
 
 
-## ---- include=F------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- include=F--------------------------------------------------------------------------------------------------------------------------------------------------------
 # Get row numbers for each cluster 
 temp1<-data_mean_imp_crucial %>% mutate(cluster=data.crucial.mean.imp.spectrum.kmeans$cluster)
 rownum1=as.numeric(rownames(temp1[temp1$cluster==1,]))
 rownum2=as.numeric(rownames(temp1[temp1$cluster==2,]))
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 # PC1 and PC2, label= one representative food with highest PC score
 max_pcloading_rownum=
   c(rownum1[which.max(abs(pca$x[rownum1,1]))],
@@ -1447,7 +1454,7 @@ p2
 
 
 
-## ----wordcloud_crucial,echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----wordcloud_crucial,echo=F------------------------------------------------------------------------------------------------------------------------------------------
 ###### data table with food name + clustering result
 result_mean_imp_spectrum_kmeans<-wide_data %>% select (FoodDescription) %>%
         mutate(group = data.crucial.mean.imp.spectrum.kmeans$cluster) %>% arrange(group)
@@ -1484,7 +1491,7 @@ wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.o
 
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 ###### average calory count per cluster
 avg_calories=data_mean_imp_crucial %>% mutate(group=data.crucial.mean.imp.spectrum.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
 
@@ -1493,7 +1500,7 @@ ggplot(avg_calories) +
     geom_errorbar( aes(x=group, ymin=mean.calories-se.calories, ymax=mean.calories+se.calories), width=0.4, colour="orange", alpha=0.9, size=1.3)
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 # PCA of nutrients 
 data_mean_imp_crucial_temp1 =data_mean_imp_crucial %>% mutate(group = data.crucial.mean.imp.spectrum.kmeans$cluster) 
 data_mean_imp_crucial.c1<-data_mean_imp_crucial_temp1[data_mean_imp_crucial_temp1$group==1,]
@@ -1555,7 +1562,7 @@ rbind(pc1_top, pc2_top) %>%
 
 
 
-## ---- include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- include=FALSE----------------------------------------------------------------------------------------------------------------------------------------------------
 ######## data with mean imputation
 data_mean_imp_temp<-wide_data %>% select(-c(FoodID,FoodGroupID,FoodDescription,FoodGroupName))
 data_mean_imp<-imputeTS::na_mean(data_mean_imp_temp,option="mean")
@@ -1567,7 +1574,7 @@ data_mean_imp_removed= data_mean_imp %>%select(-c(names(data_mean_imp)[overlaps]
 dim(data_mean_imp_removed)
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 # optimal number of clusters : according to silhouette method, 5 clusters is optimal  
 set.seed(0)
 factoextra::fviz_nbclust(data_mean_imp_removed, kmeans, method = "silhouette")
@@ -1578,7 +1585,7 @@ print(c('Size of each cluster is', data_mean_imp.kmeans$size))
 
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 centers=as.data.frame(data_mean_imp.kmeans$centers)
 
 ##### randomly choose two variables and plot clustering results (hard coded)
@@ -1594,7 +1601,7 @@ data.frame(Carb = data_mean_imp_removed$`CARBOHYDRATE, TOTAL (BY DIFFERENCE)`,
 
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 ###### data table with food name + clustering result
 result_regular_kmeans<-wide_data %>% select (FoodDescription) %>%
         mutate(group = data_mean_imp.kmeans$cluster) %>% arrange(group)
@@ -1681,7 +1688,7 @@ wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.o
 
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 ###### average calory count per cluster
 avg_calories=data_mean_imp_removed %>% mutate(group = data_mean_imp.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
 
@@ -1691,7 +1698,7 @@ ggplot(avg_calories) +
   theme(plot.title = element_text(hjust = 0.5))
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 # PCA of nutrients 
 data_mean_imp_temp =data_mean_imp_removed %>% mutate(group = data_mean_imp.kmeans$cluster) %>% select(-c("NA"))
 # te=data.frame(apply(data_mean_imp_temp,2,sd))
@@ -1837,7 +1844,7 @@ element_text(hjust = 0.5))
 
 
 
-## ----PCA1,echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----PCA1,echo=F-------------------------------------------------------------------------------------------------------------------------------------------------------
 ## RUN PCA of nutrient data
 
 pca_unscaled <- prcomp(data_mean_imp_removed,center=TRUE,scale=FALSE)
@@ -1867,7 +1874,7 @@ plot(summary(pca_unscaled)$importance[3, ], pch=16,
   #   main="Scree Plot of Cumulative PVE for AFQT")
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 ## RUN PCA of nutrient data
 ## In order to scale the data, needed to remove variables with 0 standard deviaion (to solve this error: Error in prcomp.default(data_mean_imp, center = TRUE, scale. = TRUE) : cannot rescale a constant/zero column to unit variance)
 ##  "FATTY ACIDS, MONOUNSATURATED, 12:1, LAUROLEIC" and "NA" were removed for this reason
@@ -1904,7 +1911,7 @@ plot(summary(pca_scaled)$importance[3, ], pch=16,
 # sanity check : round(cov(pca_scaled$x), 4) ; round(t(pca_scaled$rotation) %*% pca_scaled$rotation)
 
 
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # PC1 and PC2
 pca <- prcomp(data_mean_imp_scale,center=TRUE,scale.=FALSE)
 
@@ -1938,7 +1945,7 @@ p_scaled
 
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 data_mean_imp_scale=data_mean_imp_removed %>% select(-c("NA"))
 pca <- prcomp(data_mean_imp_scale,center=TRUE,scale=TRUE)
 
@@ -1966,7 +1973,7 @@ rbind(pc1_top, pc2_top) %>%
 element_text(hjust = 0.5))
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 # optimal number of clusters : according to silhouette method, it's 5.
 set.seed(0)
 factoextra::fviz_nbclust(data_mean_imp_scale, kmeans, method = "silhouette")
@@ -1976,7 +1983,7 @@ data.mean.imp.spectrum.kmeans<- kmeans(x = pca$x[,1:10], 5)
 
 
 
-## ---- include=F------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- include=F--------------------------------------------------------------------------------------------------------------------------------------------------------
 # Get row numbers for each cluster 
 temp1<-data_mean_imp_scale %>% mutate(cluster=data.mean.imp.spectrum.kmeans$cluster)
 
@@ -1988,7 +1995,7 @@ rownum5=as.numeric(rownames(temp1[temp1$cluster==5,]))
 
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 # PC1 and PC2, label= one representative food with highest PC score
 max_pcscore_rownum=
   c(rownum1[which.max(abs(pca$x[rownum1,1]))],
@@ -2061,7 +2068,7 @@ p2
 
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 ###### data table with food name + clustering result
 result_mean_imp_spectrum_kmeans<-wide_data %>% select (FoodDescription) %>%
         mutate(group = data.mean.imp.spectrum.kmeans$cluster) %>% arrange(group)
@@ -2148,7 +2155,7 @@ wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.o
 
 
 
-## ----calories2,echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----calories2,echo=F--------------------------------------------------------------------------------------------------------------------------------------------------
 ###### average calory count per cluster
 avg_calories=data_mean_imp_scale %>% mutate(group=data.mean.imp.spectrum.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
 
@@ -2160,7 +2167,7 @@ ggplot(avg_calories) +
 
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 # PCA of nutrients 
 
 
@@ -2324,7 +2331,7 @@ element_text(hjust = 0.5))
 
 
 
-## ---- include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- include=FALSE----------------------------------------------------------------------------------------------------------------------------------------------------
 ######## data with variables that have more than 50% of NAs removed  + mean imputation of survived variables
 NAinfo<-inspect.na(wide_data, summary = T)
 halfNA<-NAinfo$column_name[NAinfo$ratio_of_NA>0.5]
@@ -2336,7 +2343,7 @@ data_halfNArm_mean_imp<-imputeTS::na_mean(data_halfNArm,option="mean")
 # sum(is.na(data_halfNArm_mean_imp))
 
 
-## ----regular kmeans2, echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----regular kmeans2, echo=F-------------------------------------------------------------------------------------------------------------------------------------------
 # optimal number of clusters : according to silhouette method, 8 clusters is optimal  
 set.seed(0)
 factoextra::fviz_nbclust(data_halfNArm_mean_imp, kmeans, method = "silhouette")
@@ -2346,7 +2353,7 @@ data_halfNArm_mean_imp.kmeans <- data_halfNArm_mean_imp %>% kmeans(centers = 8) 
 print(c('Size of each cluster is', data_halfNArm_mean_imp.kmeans$size))
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 ##### randomly choose two variables and plot clustering results
 data.frame(Carb = data_halfNArm_mean_imp$`CARBOHYDRATE, TOTAL (BY DIFFERENCE)`, 
           Kcal =data_halfNArm_mean_imp$`ENERGY (KILOCALORIES)`,
@@ -2357,7 +2364,7 @@ data.frame(Carb = data_halfNArm_mean_imp$`CARBOHYDRATE, TOTAL (BY DIFFERENCE)`,
 
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 ###### data table with food name + clustering result
 result_regular_kmeans<-wide_data %>% select (FoodDescription) %>%
         mutate(group = data_halfNArm_mean_imp.kmeans$cluster) %>% arrange(group)
@@ -2485,7 +2492,7 @@ wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=200, random.o
 
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 ###### average calory count per cluster
 avg_calories=data_halfNArm_mean_imp %>% mutate(group = data_halfNArm_mean_imp.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
 
@@ -2494,7 +2501,7 @@ ggplot(avg_calories) +
     geom_errorbar( aes(x=group, ymin=mean.calories-se.calories, ymax=mean.calories+se.calories), width=0.4, colour="orange", alpha=0.9, size=1.3)
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 # PCA of nutrients 
 data_halfNArm_mean_imp_temp =data_halfNArm_mean_imp %>% mutate(group = data_halfNArm_mean_imp.kmeans$cluster) 
 data_halfNArm_mean_imp.c1<-data_halfNArm_mean_imp_temp[data_halfNArm_mean_imp_temp$group==1,]
@@ -2700,7 +2707,7 @@ rbind(pc1_top, pc2_top) %>%
   theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1))
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 ## RUN PCA of nutrient data
 pca <- prcomp(data_halfNArm_mean_imp)
 # names(pca)
@@ -2721,7 +2728,7 @@ plot(pve, type="b", pch = 19, frame = FALSE)
   #   main="Scree Plot of Cumulative PVE for AFQT")
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 ## plot top 20 loadings
 top_k <- 20
 ## get pc1 and pc2
@@ -2745,7 +2752,7 @@ rbind(pc1_top, pc2_top) %>%
 
 
 
-## ----spectrum kmeans2, echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----spectrum kmeans2, echo=F------------------------------------------------------------------------------------------------------------------------------------------
 # optimal number of clusters : according to silhouette method, it's 8 (same as regular clustering). 
 set.seed(0)
 factoextra::fviz_nbclust(data_halfNArm_mean_imp, kmeans, method = "silhouette")
@@ -2756,7 +2763,7 @@ data.mean.imp.spectrum.kmeans<- kmeans(x = pca$x[, 1:7], 8)
 # shape indicates the cluster results 
 
 
-## ---- include=F------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- include=F--------------------------------------------------------------------------------------------------------------------------------------------------------
 # Get row numbers for each cluster 
 temp1<-data_halfNArm_mean_imp %>% mutate(cluster=data.mean.imp.spectrum.kmeans$cluster)
 rownum1=as.numeric(rownames(temp1[temp1$cluster==1,]))
@@ -2769,7 +2776,7 @@ rownum7=as.numeric(rownames(temp1[temp1$cluster==7,]))
 rownum8=as.numeric(rownames(temp1[temp1$cluster==8,]))
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 # PC1 and PC2, label= one representative food with highest PC score
 max_pcloading_rownum=c(rownum1[which.max(pca$x[rownum1,1])],rownum2[which.max(pca$x[rownum2,1])],rownum3[which.max(pca$x[rownum3,1])],rownum4[which.max(pca$x[rownum4,1])],rownum5[which.max(pca$x[rownum5,1])],rownum6[which.max(pca$x[rownum6,1])],rownum7[which.max(pca$x[rownum7,1])],rownum8[which.max(pca$x[rownum8,1])])
 
@@ -2827,7 +2834,7 @@ p2
 
 
 
-## ----wordcloud4, echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----wordcloud4, echo=F------------------------------------------------------------------------------------------------------------------------------------------------
 ###### data table with food name + clustering result
 result_mean_imp_spectrum_kmeans<-wide_data %>% select (FoodDescription) %>%
         mutate(group = data.mean.imp.spectrum.kmeans$cluster) %>% arrange(group)
@@ -2956,7 +2963,7 @@ wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=200, random.o
 
 
 
-## ----echo=F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ----echo=F------------------------------------------------------------------------------------------------------------------------------------------------------------
 ###### average calory count per cluster
 avg_calories=data_halfNArm_mean_imp %>% mutate(group=data.mean.imp.spectrum.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
 
@@ -2965,7 +2972,7 @@ ggplot(avg_calories) +
     geom_errorbar( aes(x=group, ymin=mean.calories-se.calories, ymax=mean.calories+se.calories), width=0.4, colour="orange", alpha=0.9, size=1.3)
 
 
-## ---- echo=F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## ---- echo=F-----------------------------------------------------------------------------------------------------------------------------------------------------------
 # PCA of nutrients 
 data_halfNArm_mean_imp_temp1 =data_halfNArm_mean_imp %>% mutate(group = data.mean.imp.spectrum.kmeans$cluster) 
 data_halfNArm_mean_imp.c1<-data_halfNArm_mean_imp_temp1[data_halfNArm_mean_imp_temp1$group==1,]

@@ -30,3 +30,6 @@ SnowballC
 RColorBrewer
 wordcloud
 imputeTS
+cluster
+clValid
+factoextra
