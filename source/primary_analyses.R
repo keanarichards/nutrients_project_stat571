@@ -4,7 +4,7 @@ options(scipen = 0, digits = 3, tibble.print_max = 50)
 knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning = F)
 
 if(!require("pacman")) install.packages("pacman")
-pacman::p_load(tidyverse, here, glmnet, car, data.table, summarytools, corrplot, GGally, varhandle, gtsummary, pROC, stargazer, sjPlot, report,tm,SnowballC,wordcloud,RColorBrewer, imputeTS,  clValid, cluster, factoextra, fpc) 
+pacman::p_load(tidyverse, here, glmnet, car, data.table, summarytools, corrplot, GGally, varhandle, gtsummary, pROC, stargazer, sjPlot, report,tm,SnowballC,wordcloud,RColorBrewer, imputeTS,  clValid, cluster, factoextra, fpc, fields) 
 
 
 plot_aes = theme_minimal() +
@@ -57,9 +57,9 @@ long_data <- wide_data %>% pivot_longer(cols = PROTEIN:`OXALIC ACID`, names_to =
 ######## data with mean imputation
 data_mean_imp_temp<-wide_data %>% select(-c(FoodID,FoodGroupID,FoodDescription,FoodGroupName))
 data_mean_imp<-imputeTS::na_mean(data_mean_imp_temp,option="mean")
-data_mean_imp_standardized<-data.frame(scale(data_mean_imp,center=T, scale=T))
 
-data_mean_imp_standardized<- data_mean_imp_standardized[, -c(146, 152)]
+data_mean_imp<- data_mean_imp[, -c(146, 152)]
+data_mean_imp_standardized<-data.frame(scale(data_mean_imp,center=T, scale=T))
 
 
 
@@ -75,7 +75,7 @@ set.seed(0)
 silh_ID1 = factoextra::fviz_nbclust(data_mean_imp_standardized, kmeans, method = "silhouette")
 
 ##### run k-means clustering
-data_mean_imp.kmeans <- data_mean_imp_standardized %>% kmeans(centers = 8)  # centers: number of cluster
+data_mean_imp.kmeans <- data_mean_imp_standardized %>% kmeans(centers = 2)  # centers: number of cluster
 print(c('Size of each cluster is', data_mean_imp.kmeans$size))
 
 
@@ -93,12 +93,7 @@ clusterplot1 = data.frame(Carb = data_mean_imp_standardized$CARBOHYDRATE..TOTAL.
   geom_point(aes(x=Carb,y=Kcal,col=group))+theme_bw()+labs(color="Cluster") +ggtitle("Clustering over randomly chosen two variables")+xlab("Carbohydrate")+ylab("Energy(Kcal)")+
 	geom_point(data=centers,aes(x=`CARBOHYDRATE..TOTAL..BY.DIFFERENCE.`,y=`ENERGY..KILOCALORIES.`,cex=20),show.legend=F)+ 
 	ggplot2::annotate(geom = "text",x=centers$CARBOHYDRATE..TOTAL..BY.DIFFERENCE.[1]+.1,y=centers$ENERGY..KILOCALORIES.[1],label = paste0("Center", 1), hjust = "left", fontface = "bold", size = 4)+ 
-	ggplot2::annotate(geom = "text",x=centers$CARBOHYDRATE..TOTAL..BY.DIFFERENCE.[2]+.1,y=centers$ENERGY..KILOCALORIES.[2],label = paste0("Center", 2), hjust = "left", fontface = "bold", size = 4)+ 
-	ggplot2::annotate(geom = "text",x=centers$CARBOHYDRATE..TOTAL..BY.DIFFERENCE.[3:4]+.1,y=centers$ENERGY..KILOCALORIES.[3:4],label = paste0("Center", 3:4), hjust = "left", fontface = "bold", size = 4)+ 
-	ggplot2::annotate(geom = "text",x=centers$CARBOHYDRATE..TOTAL..BY.DIFFERENCE.[6:7]+.1,y=centers$ENERGY..KILOCALORIES.[6:7],label = paste0("Center", 6:7), hjust = "left", fontface = "bold", size = 4)+ 
-	ggplot2::annotate(geom = "text",x=centers$CARBOHYDRATE..TOTAL..BY.DIFFERENCE.[5]+.1,y=centers$ENERGY..KILOCALORIES.[5],label = paste0("Center", 5), hjust = "left", fontface = "bold", size = 4)+ 
-	ggplot2::annotate(geom = "text",x=centers$CARBOHYDRATE..TOTAL..BY.DIFFERENCE.[8]+.1,y=centers$ENERGY..KILOCALORIES.[8],label = paste0("Center", 8), hjust = "left", fontface = "bold", size = 4)
-
+	ggplot2::annotate(geom = "text",x=centers$CARBOHYDRATE..TOTAL..BY.DIFFERENCE.[2]+.1,y=centers$ENERGY..KILOCALORIES.[2],label = paste0("Center", 2), hjust = "left", fontface = "bold", size = 4)
 # + ggrepel::geom_text_repel(aes(label = team))
 
 
@@ -143,115 +138,115 @@ dev.off()
 
 
 ###### Cluster 3 
-docs<-Corpus(VectorSource(result_regular_kmeans$FoodDescription[result_regular_kmeans$group==3]))
-# inspect(docs)
-docs <- docs %>%
-  tm_map(removeWords,c("and","with")) %>%
-  tm_map(removeNumbers) %>%
-  tm_map(removePunctuation) %>%
-  tm_map(stripWhitespace)
-dtm <- TermDocumentMatrix(docs) 
-matrix <- as.matrix(dtm) 
-words <- sort(rowSums(matrix),decreasing=TRUE) 
-df <- data.frame(word = names(words),freq=words)
-set.seed(1234) # for reproducibility 
-png(here("figs", "wc3.png"), width=12, height=8, units="in", res=300)
-wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
-dev.off()
-
-
-###### Cluster 4 
-docs<-Corpus(VectorSource(result_regular_kmeans$FoodDescription[result_regular_kmeans$group==4]))
-# inspect(docs)
-docs <- docs %>%
-  tm_map(removeWords,c("and","with")) %>%
-  tm_map(removeNumbers) %>%
-  tm_map(removePunctuation) %>%
-  tm_map(stripWhitespace)
-dtm <- TermDocumentMatrix(docs) 
-matrix <- as.matrix(dtm) 
-words <- sort(rowSums(matrix),decreasing=TRUE) 
-df <- data.frame(word = names(words),freq=words)
-set.seed(1234) # for reproducibility 
-png(here("figs", "wc4.png"), width=12, height=8, units="in", res=300)
-wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
-dev.off()
-
-
-
-###### Cluster 5
-docs<-Corpus(VectorSource(result_regular_kmeans$FoodDescription[result_regular_kmeans$group==5]))
-# inspect(docs)
-docs <- docs %>%
-  tm_map(removeWords,c("and","with")) %>%
-  tm_map(removeNumbers) %>%
-  tm_map(removePunctuation) %>%
-  tm_map(stripWhitespace)
-dtm <- TermDocumentMatrix(docs) 
-matrix <- as.matrix(dtm) 
-words <- sort(rowSums(matrix),decreasing=TRUE) 
-df <- data.frame(word = names(words),freq=words)
-set.seed(1234) # for reproducibility 
-png(here("figs", "wc5.png"), width=12, height=8, units="in", res=300)
-wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
-dev.off()
-
-
-###### Cluster 6
-docs<-Corpus(VectorSource(result_regular_kmeans$FoodDescription[result_regular_kmeans$group==6]))
-# inspect(docs)
-docs <- docs %>%
-  tm_map(removeWords,c("and","with")) %>%
-  tm_map(removeNumbers) %>%
-  tm_map(removePunctuation) %>%
-  tm_map(stripWhitespace)
-
-dtm <- TermDocumentMatrix(docs) 
-matrix <- as.matrix(dtm) 
-words <- sort(rowSums(matrix),decreasing=TRUE) 
-df <- data.frame(word = names(words),freq=words)
-set.seed(1234) # for reproducibility 
-png(here("figs", "wc6.png"), width=12, height=8, units="in", res=300)
-wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
-dev.off()
-
-
-
-###### Cluster 7
-docs<-Corpus(VectorSource(result_regular_kmeans$FoodDescription[result_regular_kmeans$group==7]))
-# inspect(docs)
-docs <- docs %>%
-  tm_map(removeWords,c("and","with")) %>%
-  tm_map(removeNumbers) %>%
-  tm_map(removePunctuation) %>%
-  tm_map(stripWhitespace)
-dtm <- TermDocumentMatrix(docs) 
-matrix <- as.matrix(dtm) 
-words <- sort(rowSums(matrix),decreasing=TRUE) 
-df <- data.frame(word = names(words),freq=words)
-set.seed(1234) # for reproducibility 
-png(here("figs", "wc7.png"), width=12, height=8, units="in", res=300)
-wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
-dev.off()
-
-
-
-###### Cluster 8
-docs<-Corpus(VectorSource(result_regular_kmeans$FoodDescription[result_regular_kmeans$group==8]))
-# inspect(docs)
-docs <- docs %>%
-  tm_map(removeWords,c("and","with")) %>%
-  tm_map(removeNumbers) %>%
-  tm_map(removePunctuation) %>%
-  tm_map(stripWhitespace)
-dtm <- TermDocumentMatrix(docs) 
-matrix <- as.matrix(dtm) 
-words <- sort(rowSums(matrix),decreasing=TRUE) 
-df <- data.frame(word = names(words),freq=words)
-set.seed(1234) # for reproducibility 
-png(here("figs", "wc8.png"), width=12, height=8, units="in", res=300)
-wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
-dev.off()
+# docs<-Corpus(VectorSource(result_regular_kmeans$FoodDescription[result_regular_kmeans$group==3]))
+# # inspect(docs)
+# docs <- docs %>%
+#   tm_map(removeWords,c("and","with")) %>%
+#   tm_map(removeNumbers) %>%
+#   tm_map(removePunctuation) %>%
+#   tm_map(stripWhitespace)
+# dtm <- TermDocumentMatrix(docs) 
+# matrix <- as.matrix(dtm) 
+# words <- sort(rowSums(matrix),decreasing=TRUE) 
+# df <- data.frame(word = names(words),freq=words)
+# set.seed(1234) # for reproducibility 
+# png(here("figs", "wc3.png"), width=12, height=8, units="in", res=300)
+# wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
+# dev.off()
+# 
+# 
+# ###### Cluster 4 
+# docs<-Corpus(VectorSource(result_regular_kmeans$FoodDescription[result_regular_kmeans$group==4]))
+# # inspect(docs)
+# docs <- docs %>%
+#   tm_map(removeWords,c("and","with")) %>%
+#   tm_map(removeNumbers) %>%
+#   tm_map(removePunctuation) %>%
+#   tm_map(stripWhitespace)
+# dtm <- TermDocumentMatrix(docs) 
+# matrix <- as.matrix(dtm) 
+# words <- sort(rowSums(matrix),decreasing=TRUE) 
+# df <- data.frame(word = names(words),freq=words)
+# set.seed(1234) # for reproducibility 
+# png(here("figs", "wc4.png"), width=12, height=8, units="in", res=300)
+# wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
+# dev.off()
+# 
+# 
+# 
+# ###### Cluster 5
+# docs<-Corpus(VectorSource(result_regular_kmeans$FoodDescription[result_regular_kmeans$group==5]))
+# # inspect(docs)
+# docs <- docs %>%
+#   tm_map(removeWords,c("and","with")) %>%
+#   tm_map(removeNumbers) %>%
+#   tm_map(removePunctuation) %>%
+#   tm_map(stripWhitespace)
+# dtm <- TermDocumentMatrix(docs) 
+# matrix <- as.matrix(dtm) 
+# words <- sort(rowSums(matrix),decreasing=TRUE) 
+# df <- data.frame(word = names(words),freq=words)
+# set.seed(1234) # for reproducibility 
+# png(here("figs", "wc5.png"), width=12, height=8, units="in", res=300)
+# wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
+# dev.off()
+# 
+# 
+# ###### Cluster 6
+# docs<-Corpus(VectorSource(result_regular_kmeans$FoodDescription[result_regular_kmeans$group==6]))
+# # inspect(docs)
+# docs <- docs %>%
+#   tm_map(removeWords,c("and","with")) %>%
+#   tm_map(removeNumbers) %>%
+#   tm_map(removePunctuation) %>%
+#   tm_map(stripWhitespace)
+# 
+# dtm <- TermDocumentMatrix(docs) 
+# matrix <- as.matrix(dtm) 
+# words <- sort(rowSums(matrix),decreasing=TRUE) 
+# df <- data.frame(word = names(words),freq=words)
+# set.seed(1234) # for reproducibility 
+# png(here("figs", "wc6.png"), width=12, height=8, units="in", res=300)
+# wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
+# dev.off()
+# 
+# 
+# 
+# ###### Cluster 7
+# docs<-Corpus(VectorSource(result_regular_kmeans$FoodDescription[result_regular_kmeans$group==7]))
+# # inspect(docs)
+# docs <- docs %>%
+#   tm_map(removeWords,c("and","with")) %>%
+#   tm_map(removeNumbers) %>%
+#   tm_map(removePunctuation) %>%
+#   tm_map(stripWhitespace)
+# dtm <- TermDocumentMatrix(docs) 
+# matrix <- as.matrix(dtm) 
+# words <- sort(rowSums(matrix),decreasing=TRUE) 
+# df <- data.frame(word = names(words),freq=words)
+# set.seed(1234) # for reproducibility 
+# png(here("figs", "wc7.png"), width=12, height=8, units="in", res=300)
+# wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
+# dev.off()
+# 
+# 
+# 
+# ###### Cluster 8
+# docs<-Corpus(VectorSource(result_regular_kmeans$FoodDescription[result_regular_kmeans$group==8]))
+# # inspect(docs)
+# docs <- docs %>%
+#   tm_map(removeWords,c("and","with")) %>%
+#   tm_map(removeNumbers) %>%
+#   tm_map(removePunctuation) %>%
+#   tm_map(stripWhitespace)
+# dtm <- TermDocumentMatrix(docs) 
+# matrix <- as.matrix(dtm) 
+# words <- sort(rowSums(matrix),decreasing=TRUE) 
+# df <- data.frame(word = names(words),freq=words)
+# set.seed(1234) # for reproducibility 
+# png(here("figs", "wc8.png"), width=12, height=8, units="in", res=300)
+# wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
+# dev.off()
 
 # drained, dehydrated, boiled, raw, frozen, prepared, ready, unprepared, made
 
@@ -259,7 +254,7 @@ dev.off()
 
 ## ----echo=F--------------------------------------------------------------------------------------------------------------------------------------------------
 ###### average calory count per cluster
-avg_calories=data_mean_imp_standardized %>% mutate(group = data_mean_imp.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(ENERGY..KILOCALORIES.),se.calories=sd(ENERGY..KILOCALORIES.) /sqrt(length(ENERGY..KILOCALORIES.)),std.calories=sd(ENERGY..KILOCALORIES.))
+avg_calories=data_mean_imp %>% mutate(group = data_mean_imp.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
 
 kcal_cluster1 = ggplot(avg_calories) +
     geom_bar(aes(x=group, y=mean.calories), stat="identity", fill="skyblue", alpha=0.7) +
@@ -269,16 +264,16 @@ kcal_cluster1 = ggplot(avg_calories) +
 
 ## ----echo=F--------------------------------------------------------------------------------------------------------------------------------------------------
 # PCA of nutrients 
-data_mean_imp_temp =data_mean_imp_standardized %>% mutate(group = data_mean_imp.kmeans$cluster) %>% select(-c("FATTY ACIDS, MONOUNSATURATED, 12:1, LAUROLEIC","NA"))
+data_mean_imp_temp =data_mean_imp_standardized %>% mutate(group = data_mean_imp.kmeans$cluster) 
 
 data_mean_imp.c1<-data_mean_imp_temp[data_mean_imp_temp$group==1,]
 data_mean_imp.c2<-data_mean_imp_temp[data_mean_imp_temp$group==2,]
-data_mean_imp.c3<-data_mean_imp_temp[data_mean_imp_temp$group==3,]
-data_mean_imp.c4<-data_mean_imp_temp[data_mean_imp_temp$group==4,]
-data_mean_imp.c5<-data_mean_imp_temp[data_mean_imp_temp$group==5,]
-data_mean_imp.c6<-data_mean_imp_temp[data_mean_imp_temp$group==6,]
-data_mean_imp.c7<-data_mean_imp_temp[data_mean_imp_temp$group==7,]
-data_mean_imp.c8<-data_mean_imp_temp[data_mean_imp_temp$group==8,]
+# data_mean_imp.c3<-data_mean_imp_temp[data_mean_imp_temp$group==3,]
+# data_mean_imp.c4<-data_mean_imp_temp[data_mean_imp_temp$group==4,]
+# data_mean_imp.c5<-data_mean_imp_temp[data_mean_imp_temp$group==5,]
+# data_mean_imp.c6<-data_mean_imp_temp[data_mean_imp_temp$group==6,]
+# data_mean_imp.c7<-data_mean_imp_temp[data_mean_imp_temp$group==7,]
+# data_mean_imp.c8<-data_mean_imp_temp[data_mean_imp_temp$group==8,]
 
 # Cluster 1 
 sdzero=data.frame(apply(data_mean_imp.c1,2,sd))
@@ -338,172 +333,172 @@ element_text(hjust = 0.5))
 
 
 
-# Cluster 3
-sdzero=data.frame(apply(data_mean_imp.c3,2,sd))
-whichone=which(sdzero == 0)
-data_mean_imp.c3=data_mean_imp.c3%>%select(-c(names(data_mean_imp.c3)[whichone]))
-data_mean_imp.pca <- prcomp(data_mean_imp.c3,center=T,scale=T)
-
-top_k <- 20
-## get pc1 and pc2
-pc1 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,1]),
-                  gene = rownames(data_mean_imp.pca$rotation),
-                  pc = "PC1")
-pc2 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,2]),
-                  gene = rownames(data_mean_imp.pca$rotation),
-                  pc = "PC2")
-# get top_k of pc1 and pc2
-pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
-pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
-important_nutrients3 = rbind(pc1_top, pc2_top) %>%
-  ggplot(aes(x = reorder(gene, -loading), y = loading)) +
-  geom_point() +
-  ggtitle("Top Nutrients of Cluster 3") +
-  xlab("Nutrient") +
-  facet_wrap(~pc, nrow = 1, scales = "free_x") +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1),plot.title = 
-element_text(hjust = 0.5))
-
-
-
-# Cluster 4
-sdzero=data.frame(apply(data_mean_imp.c4,2,sd))
-whichone=which(sdzero == 0)
-data_mean_imp.c4=data_mean_imp.c4%>%select(-c(names(data_mean_imp.c4)[whichone]))
-data_mean_imp.pca <- prcomp(data_mean_imp.c4,center=T,scale=T)
-
-top_k <- 20
-## get pc1 and pc2
-pc1 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,1]),
-                  gene = rownames(data_mean_imp.pca$rotation),
-                  pc = "PC1")
-pc2 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,2]),
-                  gene = rownames(data_mean_imp.pca$rotation),
-                  pc = "PC2")
-# get top_k of pc1 and pc2
-pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
-pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
-important_nutrients4 = rbind(pc1_top, pc2_top) %>%
-  ggplot(aes(x = reorder(gene, -loading), y = loading)) +
-  geom_point() +
-  ggtitle("Top Nutrients of Cluster 4") +
-  xlab("Nutrient") +
-  facet_wrap(~pc, nrow = 1, scales = "free_x") +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1),plot.title = 
-element_text(hjust = 0.5))
-
-
-# Cluster 5
-sdzero=data.frame(apply(data_mean_imp.c5,2,sd))
-whichone=which(sdzero == 0)
-data_mean_imp.c5=data_mean_imp.c5%>%select(-c(names(data_mean_imp.c5)[whichone]))
-data_mean_imp.pca <- prcomp(data_mean_imp.c5,center=T,scale=T)
-
-top_k <- 20
-## get pc1 and pc2
-pc1 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,1]),
-                  gene = rownames(data_mean_imp.pca$rotation),
-                  pc = "PC1")
-pc2 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,2]),
-                  gene = rownames(data_mean_imp.pca$rotation),
-                  pc = "PC2")
-# get top_k of pc1 and pc2
-pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
-pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
-important_nutrients5 = rbind(pc1_top, pc2_top) %>%
-  ggplot(aes(x = reorder(gene, -loading), y = loading)) +
-  geom_point() +
-  ggtitle("Top Nutrients of Cluster 5") +
-  xlab("Nutrient") +
-  facet_wrap(~pc, nrow = 1, scales = "free_x") +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1),plot.title = 
-element_text(hjust = 0.5))
-
-
-# Cluster 6
-sdzero=data.frame(apply(data_mean_imp.c6,2,sd))
-whichone=which(sdzero == 0)
-data_mean_imp.c6=data_mean_imp.c6%>%select(-c(names(data_mean_imp.c6)[whichone]))
-data_mean_imp.pca <- prcomp(data_mean_imp.c6,center=T,scale=T)
-
-top_k <- 20
-## get pc1 and pc2
-pc1 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,1]),
-                  gene = rownames(data_mean_imp.pca$rotation),
-                  pc = "PC1")
-pc2 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,2]),
-                  gene = rownames(data_mean_imp.pca$rotation),
-                  pc = "PC2")
-# get top_k of pc1 and pc2
-pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
-pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
-important_nutrients6 = rbind(pc1_top, pc2_top) %>%
-  ggplot(aes(x = reorder(gene, -loading), y = loading)) +
-  geom_point() +
-  ggtitle("Top Nutrients of Cluster 6") +
-  xlab("Nutrient") +
-  facet_wrap(~pc, nrow = 1, scales = "free_x") +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1),plot.title = 
-element_text(hjust = 0.5))
-
-
-# Cluster 7
-sdzero=data.frame(apply(data_mean_imp.c7,2,sd))
-whichone=which(sdzero == 0)
-data_mean_imp.c7=data_mean_imp.c7%>%select(-c(names(data_mean_imp.c7)[whichone]))
-data_mean_imp.pca <- prcomp(data_mean_imp.c7,center=T,scale=T)
-
-top_k <- 20
-## get pc1 and pc2
-pc1 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,1]),
-                  gene = rownames(data_mean_imp.pca$rotation),
-                  pc = "PC1")
-pc2 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,2]),
-                  gene = rownames(data_mean_imp.pca$rotation),
-                  pc = "PC2")
-# get top_k of pc1 and pc2
-pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
-pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
-important_nutrients7 = rbind(pc1_top, pc2_top) %>%
-  ggplot(aes(x = reorder(gene, -loading), y = loading)) +
-  geom_point() +
-  ggtitle("Top Nutrients of Cluster 7") +
-  xlab("Nutrient") +
-  facet_wrap(~pc, nrow = 1, scales = "free_x") +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1),plot.title = 
-element_text(hjust = 0.5))
-
-
-# Cluster 8
-sdzero=data.frame(apply(data_mean_imp.c8,2,sd))
-whichone=which(sdzero == 0)
-data_mean_imp.c8=data_mean_imp.c8%>%select(-c(names(data_mean_imp.c8)[whichone]))
-data_mean_imp.pca <- prcomp(data_mean_imp.c8,center=T,scale=T)
-
-top_k <- 20
-## get pc1 and pc2
-pc1 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,1]),
-                  gene = rownames(data_mean_imp.pca$rotation),
-                  pc = "PC1")
-pc2 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,2]),
-                  gene = rownames(data_mean_imp.pca$rotation),
-                  pc = "PC2")
-# get top_k of pc1 and pc2
-pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
-pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
-important_nutrients8 = rbind(pc1_top, pc2_top) %>%
-  ggplot(aes(x = reorder(gene, -loading), y = loading)) +
-  geom_point() +
-  ggtitle("Top Nutrients of Cluster 8") +
-  xlab("Nutrient") +
-  facet_wrap(~pc, nrow = 1, scales = "free_x") +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1),plot.title = element_text(hjust = 0.5))
+# # Cluster 3
+# sdzero=data.frame(apply(data_mean_imp.c3,2,sd))
+# whichone=which(sdzero == 0)
+# data_mean_imp.c3=data_mean_imp.c3%>%select(-c(names(data_mean_imp.c3)[whichone]))
+# data_mean_imp.pca <- prcomp(data_mean_imp.c3,center=T,scale=T)
+# 
+# top_k <- 20
+# ## get pc1 and pc2
+# pc1 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,1]),
+#                   gene = rownames(data_mean_imp.pca$rotation),
+#                   pc = "PC1")
+# pc2 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,2]),
+#                   gene = rownames(data_mean_imp.pca$rotation),
+#                   pc = "PC2")
+# # get top_k of pc1 and pc2
+# pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
+# pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
+# important_nutrients3 = rbind(pc1_top, pc2_top) %>%
+#   ggplot(aes(x = reorder(gene, -loading), y = loading)) +
+#   geom_point() +
+#   ggtitle("Top Nutrients of Cluster 3") +
+#   xlab("Nutrient") +
+#   facet_wrap(~pc, nrow = 1, scales = "free_x") +
+#   theme_bw() + 
+#   theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1),plot.title = 
+# element_text(hjust = 0.5))
+# 
+# 
+# 
+# # Cluster 4
+# sdzero=data.frame(apply(data_mean_imp.c4,2,sd))
+# whichone=which(sdzero == 0)
+# data_mean_imp.c4=data_mean_imp.c4%>%select(-c(names(data_mean_imp.c4)[whichone]))
+# data_mean_imp.pca <- prcomp(data_mean_imp.c4,center=T,scale=T)
+# 
+# top_k <- 20
+# ## get pc1 and pc2
+# pc1 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,1]),
+#                   gene = rownames(data_mean_imp.pca$rotation),
+#                   pc = "PC1")
+# pc2 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,2]),
+#                   gene = rownames(data_mean_imp.pca$rotation),
+#                   pc = "PC2")
+# # get top_k of pc1 and pc2
+# pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
+# pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
+# important_nutrients4 = rbind(pc1_top, pc2_top) %>%
+#   ggplot(aes(x = reorder(gene, -loading), y = loading)) +
+#   geom_point() +
+#   ggtitle("Top Nutrients of Cluster 4") +
+#   xlab("Nutrient") +
+#   facet_wrap(~pc, nrow = 1, scales = "free_x") +
+#   theme_bw() + 
+#   theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1),plot.title = 
+# element_text(hjust = 0.5))
+# 
+# 
+# # Cluster 5
+# sdzero=data.frame(apply(data_mean_imp.c5,2,sd))
+# whichone=which(sdzero == 0)
+# data_mean_imp.c5=data_mean_imp.c5%>%select(-c(names(data_mean_imp.c5)[whichone]))
+# data_mean_imp.pca <- prcomp(data_mean_imp.c5,center=T,scale=T)
+# 
+# top_k <- 20
+# ## get pc1 and pc2
+# pc1 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,1]),
+#                   gene = rownames(data_mean_imp.pca$rotation),
+#                   pc = "PC1")
+# pc2 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,2]),
+#                   gene = rownames(data_mean_imp.pca$rotation),
+#                   pc = "PC2")
+# # get top_k of pc1 and pc2
+# pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
+# pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
+# important_nutrients5 = rbind(pc1_top, pc2_top) %>%
+#   ggplot(aes(x = reorder(gene, -loading), y = loading)) +
+#   geom_point() +
+#   ggtitle("Top Nutrients of Cluster 5") +
+#   xlab("Nutrient") +
+#   facet_wrap(~pc, nrow = 1, scales = "free_x") +
+#   theme_bw() + 
+#   theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1),plot.title = 
+# element_text(hjust = 0.5))
+# 
+# 
+# # Cluster 6
+# sdzero=data.frame(apply(data_mean_imp.c6,2,sd))
+# whichone=which(sdzero == 0)
+# data_mean_imp.c6=data_mean_imp.c6%>%select(-c(names(data_mean_imp.c6)[whichone]))
+# data_mean_imp.pca <- prcomp(data_mean_imp.c6,center=T,scale=T)
+# 
+# top_k <- 20
+# ## get pc1 and pc2
+# pc1 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,1]),
+#                   gene = rownames(data_mean_imp.pca$rotation),
+#                   pc = "PC1")
+# pc2 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,2]),
+#                   gene = rownames(data_mean_imp.pca$rotation),
+#                   pc = "PC2")
+# # get top_k of pc1 and pc2
+# pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
+# pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
+# important_nutrients6 = rbind(pc1_top, pc2_top) %>%
+#   ggplot(aes(x = reorder(gene, -loading), y = loading)) +
+#   geom_point() +
+#   ggtitle("Top Nutrients of Cluster 6") +
+#   xlab("Nutrient") +
+#   facet_wrap(~pc, nrow = 1, scales = "free_x") +
+#   theme_bw() + 
+#   theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1),plot.title = 
+# element_text(hjust = 0.5))
+# 
+# 
+# # Cluster 7
+# sdzero=data.frame(apply(data_mean_imp.c7,2,sd))
+# whichone=which(sdzero == 0)
+# data_mean_imp.c7=data_mean_imp.c7%>%select(-c(names(data_mean_imp.c7)[whichone]))
+# data_mean_imp.pca <- prcomp(data_mean_imp.c7,center=T,scale=T)
+# 
+# top_k <- 20
+# ## get pc1 and pc2
+# pc1 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,1]),
+#                   gene = rownames(data_mean_imp.pca$rotation),
+#                   pc = "PC1")
+# pc2 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,2]),
+#                   gene = rownames(data_mean_imp.pca$rotation),
+#                   pc = "PC2")
+# # get top_k of pc1 and pc2
+# pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
+# pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
+# important_nutrients7 = rbind(pc1_top, pc2_top) %>%
+#   ggplot(aes(x = reorder(gene, -loading), y = loading)) +
+#   geom_point() +
+#   ggtitle("Top Nutrients of Cluster 7") +
+#   xlab("Nutrient") +
+#   facet_wrap(~pc, nrow = 1, scales = "free_x") +
+#   theme_bw() + 
+#   theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1),plot.title = 
+# element_text(hjust = 0.5))
+# 
+# 
+# # Cluster 8
+# sdzero=data.frame(apply(data_mean_imp.c8,2,sd))
+# whichone=which(sdzero == 0)
+# data_mean_imp.c8=data_mean_imp.c8%>%select(-c(names(data_mean_imp.c8)[whichone]))
+# data_mean_imp.pca <- prcomp(data_mean_imp.c8,center=T,scale=T)
+# 
+# top_k <- 20
+# ## get pc1 and pc2
+# pc1 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,1]),
+#                   gene = rownames(data_mean_imp.pca$rotation),
+#                   pc = "PC1")
+# pc2 <- data.frame(loading =  abs(data_mean_imp.pca$rotation[,2]),
+#                   gene = rownames(data_mean_imp.pca$rotation),
+#                   pc = "PC2")
+# # get top_k of pc1 and pc2
+# pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
+# pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
+# important_nutrients8 = rbind(pc1_top, pc2_top) %>%
+#   ggplot(aes(x = reorder(gene, -loading), y = loading)) +
+#   geom_point() +
+#   ggtitle("Top Nutrients of Cluster 8") +
+#   xlab("Nutrient") +
+#   facet_wrap(~pc, nrow = 1, scales = "free_x") +
+#   theme_bw() + 
+#   theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1),plot.title = element_text(hjust = 0.5))
 
 
 ## ----echo=F--------------------------------------------------------------------------------------------------------------------------------------------------
@@ -546,7 +541,7 @@ plot(summary(pca_unscaled)$importance[3, ], pch=16,
 #names(data_mean_imp)[146]
 #names(data_mean_imp)[152]
 
-data_mean_imp_scale=data_mean_imp %>% select(-c("FATTY ACIDS, MONOUNSATURATED, 12:1, LAUROLEIC","NA"))
+data_mean_imp_scale=data_mean_imp
 
 # data_mean_imp_scale<-scale(as.matrix(data_mean_imp_scale),center=T, scale=T)
 
@@ -684,13 +679,25 @@ for (i in 1:length(max_pcscore_rownum)){max_pc_food[max_pcscore_rownum[i]]=as.ch
 
 temp2<-data_mean_imp_scale%>% mutate(max_pc_food=max_pc_food)
 
+centers=as.data.frame(data.mean.imp.spectrum.kmeans$centers)
+
 clusterplot3 <- data.table(x = pca$x[,1], 
                 y = pca$x[,2],
-                col = as.factor(data.mean.imp.spectrum.kmeans$cluster),name=temp2$max_pc_food) %>%
+                col = as.factor(data.mean.imp.spectrum.kmeans$cluster)) %>%
   ggplot() + 
   geom_point(aes(x = x, y = y, col = col))+
-  scale_color_manual(values = scales::hue_pal()(8))+theme_bw() + labs(color = "Food Clusters") +xlab("PC1 scores") + ylab("PC2 scores") + ggrepel::geom_text_repel(aes(x = pca$x[,1],y = pca$x[,2], label=name, color = col)) +ggtitle("8 Food Clusters Based on 10 PCs",subtitle = "label=food per cluster with highest absolute PC1 score") + theme(plot.title =element_text(hjust = 0.5))
-
+  scale_color_manual(values = scales::hue_pal()(8))+theme_bw() + labs(color = "Food Clusters") +xlab("PC1 scores") + ylab("PC2 scores") +
+	ggtitle("8 Food Clusters Based on 10 PCs") + theme(plot.title =element_text(hjust = 0.5)) + 
+	geom_point(data=centers,aes(x=`PC1`,y=`PC2`,cex=20),show.legend=F)+
+	ggplot2::annotate(geom = "text",x=centers$PC1[1]+.1,y=centers$PC2[1]-.5,label = paste0("Center", 1), hjust = "left", fontface = "bold", size = 4)+ 
+	ggplot2::annotate(geom = "text",x=centers$PC1[2]+.1,y=centers$PC2[2]-.5,label = paste0("Center", 2), hjust = "left", fontface = "bold", size = 4)+ 
+	ggplot2::annotate(geom = "text",x=centers$PC1[3]+.1,y=centers$PC2[3]-.5,label = paste0("Center", 3), hjust = "left", fontface = "bold", size = 4)+ 
+	ggplot2::annotate(geom = "text",x=centers$PC1[4]+.1,y=centers$PC2[4]-.5,label = paste0("Center", 4), hjust = "left", fontface = "bold", size = 4)+ 
+	ggplot2::annotate(geom = "text",x=centers$PC1[5]+.1,y=centers$PC2[5]-.5,label = paste0("Center", 5), hjust = "left", fontface = "bold", size = 4)+ 
+	ggplot2::annotate(geom = "text",x=centers$PC1[6]+.1,y=centers$PC2[6]-.5,label = paste0("Center", 6), hjust = "left", fontface = "bold", size = 4)+ 
+	ggplot2::annotate(geom = "text",x=centers$PC1[7]+.1,y=centers$PC2[7]-.5,label = paste0("Center", 7), hjust = "left", fontface = "bold", size = 4)+ 
+	ggplot2::annotate(geom = "text",x=centers$PC1[8]+.1,y=centers$PC2[8]-.5,label = paste0("Center", 8), hjust = "left", fontface = "bold", size = 4) 
+	
 #### PC3 and PC4, label= one representative food with highest absolute PC3 score
 max_pcscore_rownum=
   c(rownum1[which.max(abs(pca$x[rownum1,3]))],
@@ -885,7 +892,7 @@ wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.o
 
 ## ----echo=F--------------------------------------------------------------------------------------------------------------------------------------------------
 ###### average calory count per cluster
-avg_calories=data_mean_imp_scale %>% mutate(group=data.mean.imp.spectrum.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
+avg_calories=data_mean_imp %>% mutate(group=data.mean.imp.spectrum.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
 
 ggplot(avg_calories) +
     geom_bar(aes(x=group, y=mean.calories), stat="identity", fill="skyblue", alpha=0.7) +
@@ -1150,7 +1157,7 @@ plot_silhouette <- fviz_silhouette(ss)
 
 ## mean silhouette for spectrum clustering
 ss1 <- cluster::silhouette(data.mean.imp.spectrum.kmeans$cluster, dist(pca$x[,1:10]))
-km_stats1 <- cluster.stats(dist(data_mean_imp_standardized), data.mean.imp.spectrum.kmeans$cluster)
+km_stats1 <- cluster.stats(dist(data_mean_imp_scale), data.mean.imp.spectrum.kmeans$cluster)
 
 mean_ss1 <- mean(ss1[, 3])
 
@@ -1159,7 +1166,7 @@ plot_silhouette1 <- fviz_silhouette(ss1)
 ## ----include=FALSE-------------------------------------------------------------------------------------------------------------------------------------------
 # create nutrient data for Mark
 
-scenario=data.frame(Nutrient=names(data_mean_imp_standardized),Average_Amount=colMeans(data_mean_imp_standardized), STD=apply(data_mean_imp_standardized,2,sd)) 
+scenario=data.frame(Nutrient=names(data_mean_imp),Average_Amount=colMeans(data_mean_imp), STD=apply(data_mean_imp,2,sd)) 
 
 scenario['Scenario1']=scenario$Average_Amount
 
@@ -1183,290 +1190,54 @@ newn=names(data_mean_imp_standardized)
 s1_temp=tempp %>% rename_at(vars(oldn), ~ newn)
 
 # data including scenario 1 
-s1<-rbind(data_mean_imp_standardized,s1_temp)
 
-set.seed(0)
-# spectrum kmeans 
-pca <- prcomp(s1,center=TRUE,scale.=TRUE)
-data.mean.imp.spectrum.kmeans<- kmeans(x = pca$x[,1:10], 8)
+names(s1_temp) <- names(data_mean_imp)
+s1<-rbind(data_mean_imp,s1_temp)
+s1 <- data.frame(scale(s1,center=T, scale=T))
 
-data.mean.imp.spectrum.kmeans$cluster[5691] 
+centers=as.data.frame(data_mean_imp.kmeans$centers)
+dist_df <- rbind(centers, s1 %>% slice(5691))
 
-# regular kmeans
-data.mean.imp.kmeans<- kmeans(x=s1, 8)
-data.mean.imp.kmeans$cluster[5691] 
+dist <- dist(dist_df, method = "euclidean")[2:3]
+cluster_labs <- c("Cluster 1", "Cluster 2")
+
+knitr::kable(rbind(dist, cluster_labs))
+
+## identifying foods with smalleest euclidean distnace from cluster 2
+
+distances <- rdist(data_mean_imp_standardized, centers)[,2] 
+foodname=data.frame(wide_data$FoodDescription)
+distances <- cbind(foodname, distances)
+
+# set.seed(0)
+# 
+# # regular kmeans
+# data.mean.imp.kmeans.arnold<- kmeans(x=s1, 2)
+# data.mean.imp.kmeans.arnold$cluster[5691] 
 
 # Plot 
-centers=as.data.frame(data.mean.imp.spectrum.kmeans$centers)
-
-p <- data.table(x = pca$x[,1], 
-                y = pca$x[,2],
-                col = as.factor(data.mean.imp.spectrum.kmeans$cluster)) %>%
-  ggplot() + geom_point(aes(x = x, y = y, col = col))+
-  scale_color_manual(values = scales::hue_pal()(8))+theme_bw() + labs(color = "Food Clusters") +xlab("PC1 scores") + ylab("PC2 scores") +ggtitle("8 Food Clusters Based on 10 PCs") + theme(plot.title =element_text(hjust =0.5))+geom_point(data=centers,aes(x="PC1",y="PC2",cex=20),show.legend=F)+  ggplot2::annotate(geom = "text",x=centers$PC1,y=centers$PC2,label = paste0("Center", 8), hjust = "left", fontface = "bold", size = 4) 
+# centers=as.data.frame(data.mean.imp.spectrum.kmeans.arnold$centers)
+# 
+# p <- data.table(x = pca$x[,1], 
+#                 y = pca$x[,2],
+#                 col = as.factor(data.mean.imp.spectrum.kmeans.arnold$cluster)) %>%
+#   ggplot() + geom_point(aes(x = x, y = y, col = col))+
+#   scale_color_manual(values = scales::hue_pal()(8))+theme_bw() + labs(color = "Food Clusters") +xlab("PC1 scores") + ylab("PC2 scores") +ggtitle("8 Food Clusters Based on 10 PCs") + theme(plot.title =element_text(hjust =0.5))+geom_point(data=centers,aes(x="PC1",y="PC2",cex=20),show.legend=F)+  ggplot2::annotate(geom = "text",x=centers$PC1,y=centers$PC2,label = paste0("Center", 8), hjust = "left", fontface = "bold", size = 4) 
 
 
 
 ## ------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Get row numbers for each cluster 
-temp1<-s1%>% mutate(cluster=data.mean.imp.kmeans$cluster)
-clst_results<-data.mean.imp.kmeans$cluster[5691] 
-clst_center<-data.frame(data.mean.imp.kmeans$centers[data.mean.imp.kmeans$cluster[5691],])
-
-distance_from_centers=data.frame()
-
-for (i in 1:dim(s1)[1]){distance_from_centers[i,1]=dist(rbind(clst_center[,1],data.frame(t(s1[i,]))[,1]),method="euclidean")}
-
-foodname=data.frame(wide_data$FoodDescription)
-foodname[5691,1]<-"NA"
-
-distance_from_centers %>% mutate("Food"=foodname[,1]) %>% arrange(V1)
-
-
-
-
-## ------------------------------------------------------------------------------------------------------------------------------------------------------------
-# select crucial nutrients from mean imputed data
-data_mean_imp_crucial=data_mean_imp %>% select(c(starts_with("VIT"),MAGNESIUM,CALCIUM,PHOSPHORUS,POTASSIUM,`CHOLINE, TOTAL`,IRON,SELENIUM,ZINC,MANGANESE,COPPER,MOISTURE,PROTEIN,`CARBOHYDRATE, TOTAL (BY DIFFERENCE)`,`FAT (TOTAL LIPIDS)`,`FATTY ACIDS, TRANS, TOTAL`,`FATTY ACIDS, SATURATED, TOTAL`,`FATTY ACIDS, MONOUNSATURATED, TOTAL`,`FATTY ACIDS, POLYUNSATURATED, TOTAL`,`FATTY ACIDS, TOTAL TRANS-MONOENOIC`,`FATTY ACIDS, TOTAL TRANS-POLYENOIC`,`ENERGY (KILOCALORIES)`))
-
-oldnames=names(data_mean_imp_crucial%>%select(-c(contains("VIT"),contains("PROTEIN"),contains("CARBO"),contains("FAT"),contains("ENERGY"))))
-
-newnames=c("Minerals_MAGNESIUM","Minerals_CALCIUM","Minerals_PHOSPHORUS","Minerals_POTASSIUM", "Minerals_CHOLINE, TOTAL" ,"Minerals_IRON","Minerals_SELENIUM","Minerals_ZINC","Minerals_MANGANESE","COPPER","Water_MOISTURE")
-
-data_mean_imp_crucial=data_mean_imp_crucial %>% rename_at(vars(oldnames), ~ newnames)
-
-
-## ---- echo=F-------------------------------------------------------------------------------------------------------------------------------------------------
-## RUN PCA of nutrient data
-pca <- prcomp(data_mean_imp_crucial,center=TRUE,scale=TRUE)
-
-pve <- summary(pca)$importance[2, 1:15]
-plot(pve, type="b", pch = 19, frame = FALSE)
-png(here("figs", "scree_p2.png"), width=12, height=8, units="in", res=300)
-scree_p2 = plot(summary(pca)$importance[3, ], pch=16,
-     ylab="Cumulative PVE",
-     xlab="Number of PC's",
-     main="Scree Plot of Cumulative PVE for Nutrients_SCALED")
-dev.off()
-
-# will use 10 PCs
-
-
-## ------------------------------------------------------------------------------------------------------------------------------------------------------------
-## plot top 20 loadings
-top_k <- 20
-
-## get pc1 and pc2
-pc1 <- data.frame(loading = abs(pca$rotation[,1]),
-                  gene = rownames(pca$rotation),
-                  pc = "PC1")
-pc2 <- data.frame(loading = abs(pca$rotation[,2]),
-                  gene = rownames(pca$rotation),
-                  pc = "PC2")
-# get top_k of pc1 and pc2
-pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
-pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
-rbind(pc1_top, pc2_top) %>%
-  ggplot(aes(x = reorder(gene, -loading), y = loading)) +
-  geom_point() +
-  ggtitle("Top loadings") +
-  xlab("Nutrient") + ylab("Absolute values of PC loadings")+
-  facet_wrap(~pc, nrow = 1, scales = "free_x") +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1),plot.title = 
-element_text(hjust = 0.5))
-
-
-
-
-## ----echo=F--------------------------------------------------------------------------------------------------------------------------------------------------
-# optimal number of clusters : according to silhouette method, it's 2
-set.seed(0)
-silh_ID2 = factoextra::fviz_nbclust(data_mean_imp_crucial, kmeans, method = "silhouette")
-
-# kmeans 
-data.crucial.mean.imp.spectrum.kmeans<- kmeans(x = pca$x[, 1:10], 2)
-
-
-## ---- include=F----------------------------------------------------------------------------------------------------------------------------------------------
-# Get row numbers for each cluster 
-temp1<-data_mean_imp_crucial %>% mutate(cluster=data.crucial.mean.imp.spectrum.kmeans$cluster)
-rownum1=as.numeric(rownames(temp1[temp1$cluster==1,]))
-rownum2=as.numeric(rownames(temp1[temp1$cluster==2,]))
-
-
-## ---- echo=F-------------------------------------------------------------------------------------------------------------------------------------------------
-# PC1 and PC2, label= one representative food with highest PC score
-max_pcloading_rownum=
-  c(rownum1[which.max(abs(pca$x[rownum1,1]))],
-    rownum2[which.max(abs(pca$x[rownum2,1]))])
-
-
-max_pc_score_df<-as.factor(wide_data$FoodDescription[max_pcloading_rownum])
-max_pc_food <- rep(NA, dim(data_mean_imp_crucial)[1])
-for (i in 1:length(max_pcloading_rownum)){max_pc_food[max_pcloading_rownum[i]]=as.character(max_pc_score_df[i])}
-
-temp2<-data_mean_imp_crucial%>% mutate(max_pc_food=max_pc_food)
-
-clusterplot2 <- data.table(x = pca$x[,1], 
-                y = pca$x[,2],
-                col = as.factor(data.crucial.mean.imp.spectrum.kmeans$cluster),name=temp2$max_pc_food) %>%
-  ggplot() + 
-  geom_point(aes(x = x, y = y, col = col))+
-  scale_color_manual(values = scales::hue_pal()(2)) +
-  theme_bw() + labs(color = "Food Clusters") +xlab("PC1") + ylab("PC2") + ggrepel::geom_text_repel(aes(x = pca$x[,1],y = pca$x[,2], label=name, color = col, )) +ggtitle("2 Food Clusters Based on 10 PCs",subtitle = "label=food per cluster with highest PC1 score")+ theme(plot.title =element_text(hjust = 0.5))
-
-#### PC3 and PC4, label= one representative food with highest PC3 score
-max_pcloading_rownum=
-  c(rownum1[which.max(abs(pca$x[rownum1,3]))],
-    rownum2[which.max(abs(pca$x[rownum2,3]))])
-
-max_pc_score_df<-as.factor(wide_data$FoodDescription[max_pcloading_rownum])
-max_pc_food <- rep(NA, dim(data_mean_imp_crucial)[1])
-for (i in 1:length(max_pcloading_rownum)){max_pc_food[max_pcloading_rownum[i]]=as.character(max_pc_score_df[i])}
-
-temp2<-data_mean_imp_crucial%>% mutate(max_pc_food=max_pc_food)
-
-p1 <- data.table(x = pca$x[,3], 
-                y = pca$x[,4],
-                col = as.factor(data.crucial.mean.imp.spectrum.kmeans$cluster),name=temp2$max_pc_food) %>%
-  ggplot() + 
-  geom_point(aes(x = x, y = y, col = col))+
-  scale_color_manual(values = scales::hue_pal()(2)) +
-  theme_bw() + labs(color = "Food Clusters") +xlab("PC3") + ylab("PC4") + ggrepel::geom_text_repel(aes(x = pca$x[,3],y = pca$x[,4], label=name, color = col, )) +ggtitle("2 Food Clusters Based on 10 PCs",subtitle = "label=food per cluster with highest PC3 score")+ theme(plot.title =element_text(hjust = 0.5))
-
-#### PC1 and PC6, label= one representative food with highest PC1 score
-max_pcloading_rownum=
-  c(rownum1[which.max(abs(pca$x[rownum1,1]))],
-    rownum2[which.max(abs(pca$x[rownum2,1]))])
-
-max_pc_score_df<-as.factor(wide_data$FoodDescription[max_pcloading_rownum])
-max_pc_food <- rep(NA, dim(data_mean_imp_crucial)[1])
-for (i in 1:length(max_pcloading_rownum)){max_pc_food[max_pcloading_rownum[i]]=as.character(max_pc_score_df[i])}
-
-temp2<-data_mean_imp_crucial%>% mutate(max_pc_food=max_pc_food)
-
-p2 <- data.table(x = pca$x[,1], 
-                y = pca$x[,6],
-                col = as.factor(data.crucial.mean.imp.spectrum.kmeans$cluster),name=temp2$max_pc_food) %>%
-  ggplot() + 
-  geom_point(aes(x = x, y = y, col = col))+
-  scale_color_manual(values = scales::hue_pal()(2)) +
-  theme_bw() + labs(color = "Food Clusters") +xlab("PC1") + ylab("PC6") + ggrepel::geom_text_repel(aes(x = pca$x[,1],y = pca$x[,6], label=name, color = col, )) +ggtitle("2 Food Clusters Based on 10 PCs",subtitle = "label=food per cluster with highest PC1 score")+ theme(plot.title =element_text(hjust = 0.5))
-
-p1
-p2
-
-
-
-## ----wordcloud_crucial,echo=F--------------------------------------------------------------------------------------------------------------------------------
-###### data table with food name + clustering result
-result_mean_imp_spectrum_kmeans<-wide_data %>% select (FoodDescription) %>%
-        mutate(group = data.crucial.mean.imp.spectrum.kmeans$cluster) %>% arrange(group)
-
-###### Cluster 1 
-docs<-Corpus(VectorSource(result_mean_imp_spectrum_kmeans$FoodDescription[result_mean_imp_spectrum_kmeans$group==1]))
-
-# inspect(docs)
-docs <- docs %>%
-  tm_map(removeNumbers) %>%
-  tm_map(removePunctuation) %>%
-  tm_map(stripWhitespace)
-dtm <- TermDocumentMatrix(docs) 
-matrix <- as.matrix(dtm) 
-words <- sort(rowSums(matrix),decreasing=TRUE) 
-df <- data.frame(word = names(words),freq=words)
-set.seed(1234) # for reproducibility 
-png(here("figs", "wc9.png"), width=12, height=8, units="in", res=300)
-wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
-dev.off()
-
-###### Cluster 2 
-docs<-Corpus(VectorSource(result_mean_imp_spectrum_kmeans$FoodDescription[result_mean_imp_spectrum_kmeans$group==2]))
-# inspect(docs)
-docs <- docs %>%
-  tm_map(removeNumbers) %>%
-  tm_map(removePunctuation) %>%
-  tm_map(stripWhitespace)
-dtm <- TermDocumentMatrix(docs) 
-matrix <- as.matrix(dtm) 
-words <- sort(rowSums(matrix),decreasing=TRUE) 
-df <- data.frame(word = names(words),freq=words)
-set.seed(1234) # for reproducibility 
-png(here("figs", "wc10.png"), width=12, height=8, units="in", res=300)
-wordcloud(words = df$word, freq = df$freq, min.freq = 1, max.words=100, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
-dev.off()
-
-
-
-
-## ----echo=F--------------------------------------------------------------------------------------------------------------------------------------------------
-###### average calory count per cluster
-avg_calories=data_mean_imp_crucial %>% mutate(group=data.crucial.mean.imp.spectrum.kmeans$cluster) %>% group_by(group) %>% summarize(mean.calories=mean(`ENERGY (KILOCALORIES)`),se.calories=sd(`ENERGY (KILOCALORIES)`) /sqrt(length(`ENERGY (KILOCALORIES)`)),std.calories=sd(`ENERGY (KILOCALORIES)`))
-
-kcal_cluster2 = ggplot(avg_calories) +
-    geom_bar(aes(x=group, y=mean.calories), stat="identity", fill="skyblue", alpha=0.7) +
-    geom_errorbar( aes(x=group, ymin=mean.calories-se.calories, ymax=mean.calories+se.calories), width=0.4, colour="orange", alpha=0.9, size=1.3)
-
-
-## ---- echo=F-------------------------------------------------------------------------------------------------------------------------------------------------
-# PCA of nutrients 
-data_mean_imp_crucial_temp1 =data_mean_imp_crucial %>% mutate(group = data.crucial.mean.imp.spectrum.kmeans$cluster) 
-data_mean_imp_crucial.c1<-data_mean_imp_crucial_temp1[data_mean_imp_crucial_temp1$group==1,]
-data_mean_imp_crucial.c2<-data_mean_imp_crucial_temp1[data_mean_imp_crucial_temp1$group==2,]
-
-
-# Cluster 1 
-sdzero=data.frame(apply(data_mean_imp_crucial.c1,2,sd))
-whichone=which(sdzero == 0)
-data_mean_imp_crucial.c1=data_mean_imp_crucial.c1%>%select(-c(names(data_mean_imp_crucial.c1)[whichone]))
-
-data_mean_imp_crucial.pca <- prcomp(data_mean_imp_crucial.c1,scale=T,center=T)
-
-top_k <- 20
-## get pc1 and pc2
-pc1 <- data.frame(loading = data_mean_imp_crucial.pca$rotation[,1],
-                  gene = rownames(data_mean_imp_crucial.pca$rotation),
-                  pc = "PC1")
-pc2 <- data.frame(loading = data_mean_imp_crucial.pca$rotation[,2],
-                  gene = rownames(data_mean_imp_crucial.pca$rotation),
-                  pc = "PC2")
-# get top_k of pc1 and pc2
-pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
-pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
-important_nutrients9 = rbind(pc1_top, pc2_top) %>%
-  ggplot(aes(x = reorder(gene, -loading), y = loading)) +
-  geom_point() +
-  ggtitle("Top Nutrients of Cluster 1") +
-  xlab("Nutrient") +
-  facet_wrap(~pc, nrow = 1, scales = "free_x") +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1))
-
-# Cluster 2
-sdzero=data.frame(apply(data_mean_imp_crucial.c2,2,sd))
-whichone=which(sdzero == 0)
-data_mean_imp_crucial.c2=data_mean_imp_crucial.c2%>%select(-c(names(data_mean_imp_crucial.c2)[whichone]))
-data_mean_imp_crucial.pca <- prcomp(data_mean_imp_crucial.c2,scale=T,center=T)
-
-top_k <- 20
-## get pc1 and pc2
-pc1 <- data.frame(loading = data_mean_imp_crucial.pca$rotation[,1],
-                  gene = rownames(data_mean_imp_crucial.pca$rotation),
-                  pc = "PC1")
-pc2 <- data.frame(loading = data_mean_imp_crucial.pca$rotation[,2],
-                  gene = rownames(data_mean_imp_crucial.pca$rotation),
-                  pc = "PC2")
-# get top_k of pc1 and pc2
-pc1_top <- pc1 %>% arrange(-loading) %>% slice(1:top_k)
-pc2_top <- pc2 %>% arrange(-loading) %>% slice(1:top_k)
-important_nutrients10 = rbind(pc1_top, pc2_top) %>%
-  ggplot(aes(x = reorder(gene, -loading), y = loading)) +
-  geom_point() +
-  ggtitle("Top Nutrients of Cluster 2") +
-  xlab("Nutrient") +
-  facet_wrap(~pc, nrow = 1, scales = "free_x") +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = -45, hjust = 0, vjust = 1))
-
+# temp1<-s1%>% mutate(cluster=data.mean.imp.kmeans.arnold$cluster)
+# clst_results<-data.mean.imp.kmeans$cluster[5691] 
+# clst_center<-data.frame(data.mean.imp.kmeans$centers[data.mean.imp.kmeans$cluster[5691],])
+# 
+# distance_from_centers=data.frame()
+# 
+# for (i in 1:dim(s1)[1]){distance_from_centers[i,1]=dist(rbind(clst_center[,1],data.frame(t(s1[i,]))[,1]),method="euclidean")}
+# 
+# foodname=data.frame(wide_data$FoodDescription)
+# foodname[5691,1]<-"NA"
+# 
+# distance_from_centers %>% mutate("Food"=foodname[,1]) %>% arrange(V1)
 

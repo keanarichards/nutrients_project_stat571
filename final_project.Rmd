@@ -71,7 +71,7 @@ Also, it is worth noting that there are many values that are missing. For instan
 
 ## Main analyses {#analyses}
 
-Since our goal is to identify the *best* algorithm for grouping foods that will help a person plan out their meals to best suit their needs, we compared different approaches to grouping the foods based on their nutrient profiles. That is, we compared different methods to make sure foods are as similar as possible in terms of their nutrient profile (that is, we wanted to maximize in-group similarity), while also making sure foods assigned to different groups have very different nutrient profiles (in other words, minimize out-group similarity). The slides, code, and database associated with this project is publicly available [here](tinyurl.com/4x43u439). 
+Since our goal is to identify the *best* algorithm for grouping foods that will help a person plan out their meals to best suit their needs, we compared different approaches to grouping the foods based on their nutrient profiles. That is, we compared different methods to make sure foods are as similar as possible in terms of their nutrient profile (that is, we wanted to maximize in-group similarity), while also making sure foods assigned to different groups have very different nutrient profiles (in other words, minimize out-group similarity). The code, database, and final write up associated with this project is publicly available [here](https://www.tinyurl.com/4x43u439). 
 
 The first option we explored to achieve this goal was using k-means clustering on the dataset. K-means clustering is a commonly used unsupervised machine learning algorithm to divide a dataset into pre-specified set of groups (known as clusters in this context). The algorithm assigned foods to clusters based on which assignments will keep the distance between the nutrient profile of each food assigned to a cluster and the mean nutrient profile for a given cluster as low as possible. In other words, it tries to assign foods to clusters that will achieve the highest possible intra-group similarity for the cluster number that we specified. To identify the optimal number of clusters, we used the silhouette method - which essentially compares the quality of clusters produced across a different range of cluster sizes. To make this comparison, the silhouette method calculates the average silhouette width for a given cluster size, *k*. The silhouette width is a measure of the average distance between clusters, where higher values are a sign of good clustering. 
 
@@ -82,24 +82,19 @@ These were the two main clustering approaches that we compared. Since spectrum c
 # Results
 
 ## Comparing k-means clustering to spectrum clustering 
-### First approach: K means clustering on all available nutrients
+### First approach: K means clustering 
 
-The silhouette method recommended we use 8 clusters (see appendix), so we ran k-means clustering using `kmeans()` with centers set to 8. Once created, we explored some of the characteristics of the clusters. First, there is a wide range in the number of foods assigned to each cluster, with the largest cluster consisting of `r max(data_mean_imp.kmeans$size)` and the smallest cluster consisting of `r min(data_mean_imp.kmeans$size)`, and a median cluster size of `r median(data_mean_imp.kmeans$size)`. Ideally, the between-cluster sum of squares should be a large proportion of the total sum of squares (the total distance of all observations from the global center) (https://stats.stackexchange.com/questions/82776/what-does-total-ss-and-between-ss-mean-in-k-means-clustering), which would suggest that there is high separation between groups. In this case, we find that between-cluster sum of squares (`r data_mean_imp.kmeans$betweenss`) explains more than half (`r data_mean_imp.kmeans$betweenss/data_mean_imp.kmeans$totss*100`%) of the total sum of squares (`r data_mean_imp.kmeans$totss`). The plot below shows what the clusters looked like using k-means clustering across two randomly chosen variables: carbs and calories, along with the mean values of each cluster for those variables.
+The silhouette method recommended we use 2 clusters ([see appendix](#appendix)), so we ran k-means clustering using `kmeans()` with centers set to 2. Once created, we explored some of the characteristics of the clusters. First, there is a notable discrepancy in the number of foods assigned to each cluster, with the larger cluster consisting of `r max(data_mean_imp.kmeans$size)` and the smaller cluster consisting of `r min(data_mean_imp.kmeans$size)`. Ideally, the between-cluster sum of squares should be a large proportion of the total sum of squares (the total distance of all observations from the global center), which would suggest that there is high separation between groups. In this case, we find that between-cluster sum of squares (`r data_mean_imp.kmeans$betweenss`) explains `r data_mean_imp.kmeans$betweenss/data_mean_imp.kmeans$totss*100`% of the total sum of squares (`r data_mean_imp.kmeans$totss`). The plot below shows what the clusters looked like using k-means clustering across two randomly chosen variables: carbs and calories, along with the mean values of each cluster for those variables.
 
 ```{r}
 clusterplot1
 ```
 
-### Second approach: spectrum clustering on all available nutrients
+### Second approach: spectrum clustering 
 
-Before we 
+To determine the number of PCs that would be most appropriate for our dataset, we created a scree plot with the proportion of variation explained (PVE) as a function of the number of PCs used ([see appendix](#appendix)). Based on the elbow rule, we were looking for a point on the plot at which there are diminishing returns on the PVE as PCs increase (i.e., there is a point at which the PVE flattens out as number of PCs increase). We chose to use 10 PCs based on the elbow rule. We then ran k-means clustering analysis on the 10 PCs that were created for each nutrient, with the recommended 8 clusters based on average silhouette width ([see appendix](#appendix)).
 
-Describe:
-- results from PCA (scree plot), elbow rule 
-- characteristics of cluster - size of cluster, within & between group SS 
-- plot of the "8 food clusters bsaed on 7 PCs" 
-
-The plot below shows what the clusters looked like using spectrum clustering across the first two PCs, along with labels for the food in each cluster with the highest absolute PC1 score. The separation between clusters here is more obvious, which is supported by the lower average of the total within-cluster sum of squares across clusters for the spectrum clustering, at 22017
+First, there is a wide range in the number of foods assigned to each cluster, with the largest cluster consisting of `r max(data_mean_imp.kmeans$size)` and the smallest cluster consisting of `r min(data_mean_imp.kmeans$size)`, and a median cluster size of `r median(data_mean_imp.kmeans$size)`. The between-cluster sum of squares (`r data_mean_imp.kmeans$betweenss`) explains `r data_mean_imp.kmeans$betweenss/data_mean_imp.kmeans$totss*100`% of the total sum of squares (`r data_mean_imp.kmeans$totss`). The plot below shows what the 8 clusters looked like using spectrum clustering across the first two PCs, along with labels for the centroid of each cluster. 
 
 ```{r}
 clusterplot3
@@ -109,7 +104,7 @@ clusterplot3
 
 To compare the k-means and spectrum clustering methods on the quality of clusters they produced, we used different metrics of internal cluster validation to see if one method produced consistently superior clustering results compared to the other. Internal cluster validation is [one of three cluster validation statistics available](https://www.datanovia.com/en/lessons/cluster-validation-statistics-must-know-methods/) to evaluate the quality of cluster results. We chose internal cluster validation metrics because it best aligns with our goal of assessing cluster quality without using an external point of comparison, which would be considered external cluster validation (i.e., comparing whether the food groups we created actually align with the foods groups listed in the dataset). We are more interested in creating *new* high quality clusters using nutrient profiles, rather than trying to predict which of the previously established food groups a food would fall into based on its nutrient profile. 
 
-The first internal validation metric we used is identical to the one we used to identify the optimal number of clusters before running our main clustering analyses: average silhouette width. The first plot below shows the silhouette width across all 8 clusters used for regular k-means clustering, while the second plot below shows the silhouette width across all 8 clusters used for spectrum clustering. As shown in the plots, the average silhouette width for the regular k-means clustering (`r mean_ss`) is higher compared to that for the spectrum clustering (`r mean_ss1`), providing tentative evidence that the regular k-means clustering provides better clusters compared to spectrum clustering.  
+The first internal validation metric we used is identical to the one we used to identify the optimal number of clusters before running our main clustering analyses: average silhouette width. The first plot below shows the silhouette width across the 2 clusters used for regular k-means clustering, while the second plot below shows the silhouette width across all 8 clusters used for spectrum clustering. Negative values would suggest that a food was placed in the wrong cluster. As shown in the plots, the average silhouette width for the regular k-means clustering (`r mean_ss`) is higher compared to that for the spectrum clustering (`r mean_ss1`),  providing tentative evidence that the regular k-means clustering provides better clusters compared to spectrum clustering.  
 
 ```{r}
 plot_silhouette
@@ -119,62 +114,28 @@ plot_silhouette
 plot_silhouette1
 ```
 
-To corroborate our findings, we compared the clustering results using a second internal validation metric known as the Dunn index. This metric essentially compares the inter-cluster separation to the intra-cluster compactness, where good clustering results would have a low diameter (i.e., they are highly compact) and a large distance between clusters (i.e., there is high separation). Thus, we want to maximize the Dunn index in our clustering analyses. `r km_stats$dunn` `r km_stats1$dunn`
-
-
-Overall, our results support our hypothesis that spectrum clustering would provide much better groups of foods, maximizing the similarity of nutrient profiles of foods within any given cluster. 
+To corroborate our findings, we compared the clustering results using a second internal validation metric known as the Dunn index. This metric essentially compares the inter-cluster separation to the intra-cluster compactness, where good clustering results would have a low diameter (i.e., they are highly compact) and a large distance between clusters (i.e., there is high separation). Thus, we want to maximize the Dunn index in our clustering analyses. In support of the previous evidence, the Dunn index is higher for the regular k-means clustering (`r km_stats$dunn`) compared to the spectrum clustering (`r km_stats1$dunn`). Overall, our results show that regular k-means clustering would provide a better grouping of foods compared to spectrum clustering, contrary to our a priori hypotheses. 
 
 ## Exploring "intelligent" clusters
 
-We plotted different words clouds of the most commonly used words within each cluster. So for instance, here you can see that the most commonly used word in cluster 2 by far was “raw”, along with “meat” “lean” and “beef”. this cloud tends to have more meats, so it will likely have a higher protein content compared to other clusters. 
+To explore the "intelligent" clusters that we created through k-means clustering, we plotted words clouds of the most commonly used words within each cluster. For instance, the first word cloud shows that the most commonly used word in cluster 1 by far was “raw”, along with “frozen” “boiled” and “canned”. Thus, this cluster seems to be defined by *how* a food is stored or cooked. In terms of actual foods that are listed frequently in this cluster, "cereal" is relatively frequently used, along with other sugary foods.  
 
-See appendix for the full set of word clouds for this clustering result 
 ```{r}
-knitr::include_graphics(here("figs", "wc6.png"))
+knitr::include_graphics(here("figs", "wc1.png"))
 
 ```
 
+On the other hand, the word cloud of the second cluster below shows that "raw" is also used frequently in this cluster. Importantly, a larger proportion of the foods in this cluster are related to meat and generally, high-protein foods (e.g., "meat", "lean", "fat", and "fish").
+
 ```{r}
-knitr::include_graphics(here("figs", "wc7.png"))
+knitr::include_graphics(here("figs", "wc2.png"))
 ```
 
-
-We also explored which groups tend to have the highest calorie content - and by far the highest calorie groups were clusters 3 and 4. So if someone was trying to reduce their overall calorie intake, it may be a good idea to avoid these food groups. 
+We also explored which group had the highest calorie content, with cluster 2 having a noticeably larger calorie content compared to cluster 1. Thus, if someone was focusing specifically on reducing their overall calorie intake in their diet, it may be a good idea to avoid eating foods found in cluster 2. 
 
 ```{r}
 kcal_cluster1
 ```
-
-- most important nutrients based on PCA (see appendix)
-
-## Spectrum clustering on theoretically-driven nutrients 
-Describe:
-- plot of the "clustering over two randomly chosen variables" 
-
-```{r}
-clusterplot2 
-```
-
-- words clouds
-
-```{r}
-knitr::include_graphics(here("figs", "wc9.png"))
-
-```
-
-
-```{r}
-knitr::include_graphics(here("figs", "wc10.png"))
-```
-
-- mean kcal per cluster 
-
-```{r}
-kcal_cluster2
-```
-
-- most important nutrients based on PCA (see appendix)
-
 
 ## Case study: Following a diet to gain muscle 
 
@@ -182,7 +143,15 @@ After determining the best clustering approach based on food nutrient profile, w
 
 To simulate Arnold, we created a copy of the dataset from our main analyses and compared Arnold's daily nutrient targets to the daily nutrient recommendations for someone in the general population who matches him on all characteristics except for their level of activity. To determine a point of comparison for Arnold's nutrient intake, we used the [DRI Calculator for Healthcare Professionals from the National Argicultural Library](https://www.nal.usda.gov/fnic/dri-calculator/). This tool calculates daily nutrient recommendations based on the Dietary Reference Intakes (DRIs) established by the Health and Medicine Division of the National Academies of Sciences, Engineering and Medicine, representing the most current scientific knowledge on nutrient needs. We inserted gender (Male), age  (20), height (5 feet 10 inches), weight (180 pounds), and activity level (sedentary) for someone who matches Arnold on all characteristics *but* activity level, since Arnold will be above the mean on activity level compared to the typical person. Therefore, the nutrient recommendations provided by this tool are a representation of someone who matches Arnold on all characteristics, but does not aspire to be a pro bodybuilder like he does (and hence has a lower activity level). The metric of comparison we used is how much larger (or smaller) Arnold's nutrient goals are compared to the recommendations from the DRI Calculator. For instance, Arnold is aiming to consume 3600 kilocalories per day, while it is generally recommended to consume 2734 kilocalories per day for someone like him but is less active. Therefore, Arnold is consuming approximately 1.32 (3600/2734) times the amount of kilocalories recommended. Based on these calculations, Arnold will be consuming 1.2 times the amount of total carbohydrates recommended, 4.15 times the amount of total carbohydrates recommended, 270 times the amount of total saturated fats recommended, and 10.8 times the amount of total total fat recommended. We created nutrient data for Arnold by multiplying the average value of the target nutrient across the entire dataset by the amount Arnold is consuming above the mean (e.g., 1.32 * average value of nutrient across all foods) for kilocalories, total carbohydrates, saturated fats, protein, and total fat. On the other hand, for the list of nutrients above where Arnold generally knows he wants to consume at least 2 standard deviations above the mean (i.e., calcium, biotin, iron, vitamin C, selenium, Omega 3, Vitamin D, vitamin B12, copper, magnesium, riboflavin, and zinc), we calculated and inserted the value representing 2 standard deviations above the mean into Arnold's nutrient data. 
 
-To provide our recommendation, we tried to identify the cluster that most closely matched Arnold’s nutrient needs. That is, we identified the cluster that had the smallest euclidean distance from Arnold's goal nutrient profile. Based on our analyses, Arnold would best achieve his goals by eating foods in cluster 5. So we recommend Arnold target foods like, turkey, brussel sprouts, and pork, all of which are found in cluster 5. 
+Next, we identified the cluster that most closely matched Arnold’s nutrient needs. That is, we identified the cluster that had the smallest euclidean distance from Arnold's goal nutrient profile. Based on our analyses, Arnold would best achieve his goals by eating foods in cluster 2. After identifying the cluster that Arnold best fit into, we identified the foods with the smallest euclidean distance from the center of cluster 2 in the original dataset to provide recommendations for the 10 top foods that meet Arnold's target nutrient profile. The table below shows clearly that Arnold should target meats and fish to achieve his goal of becoming a pro bodybuilder.  
+
+```{r}
+distances %>% arrange(distances) %>% slice_head(n = 10) %>%  rename(
+    Food = wide_data.FoodDescription,
+    Distance = distances
+    ) %>% knitr::kable()
+```
+
 
 ```{r, eval = F}
 # calories
@@ -210,9 +179,9 @@ mean(c(3600*(.05), 3600*(.1)))
 
 # Conclusion {#conclusion} 
 
-Our results contradict our a priori hypothesis that spectrum clustering would provide much better groups of foods compared to k-means clustering. Using various metrics of internal clustering validation, we find that k-means clustering serves as a better method with this dataset for creating clusters. We explored the final set of clusters through various plots of the most frequently used words in each cluster, along with average calorie count per cluster and most important nutrients in each cluster. 
+Our results contradict our a priori hypothesis that spectrum clustering would provide much better groups of foods compared to k-means clustering. Using various metrics of internal clustering validation, we find that k-means clustering serves as a better method with this dataset for creating clusters. We explored the final set of clusters through various plots of the most frequently used words in each cluster, along with average calorie count per cluster. 
 
-Our case study with Arnold provides an example of how these results can be used in a real-world context. Although we chose to focus on one specific example of the practical uses of this work, there are a number of other contexts that are relevant. For instance, these results can help patients of chronic illness identify groups of foods that help improve their medical condition. In another case, our results can be used to cluster new foods recently approved by the FDA based on their nutrient content, which may be helpful in grocery stores to determine food placement. On a more individual level, if a person likes a specific food for its nutrient content, they can use our clustering result to help them identify similar foods that they may enjoy. Finally, these results can be used when a person is following a recipe and wants to use a food from a specific cluster, but does not have that ingredient readily available. Using our clustering results, they can identify the foods that are most similar to a missing ingredient replace it easily.
+Our case study with Arnold provides an example of how these results can be used in a real-world context. Although we chose to focus on one specific example of the practical uses of this work, there are a number of other contexts that are relevant. For instance, these results can help patients of chronic illness identify groups of foods that help improve their medical condition. In another case, our results can be used to cluster new foods recently approved by the FDA based on their nutrient content, which may be helpful in grocery stores to determine food placement. On a more individual level, if a person likes a specific food for its nutrient content, they can use our clustering result to help them identify similar foods that they may enjoy. Finally, these results can be used when a person is following a recipe and wants to use a food from a specific cluster, but does not have that ingredient readily available. Using our clustering results, they can identify the foods that are most similar to a missing ingredient and replace it easily.
 
 
 # Limitations {#limitations} 
@@ -237,112 +206,25 @@ data_mean_imp %>% dfSummary(.,  plain.ascii = FALSE, style = 'grid', graph.magni
 inspect.na(wide_data, summary = F)
 ```
 
-## Optimal number of clusters for k-means clustering on full dataset 
+## Optimal number of clusters for k-means clustering 
 
 ```{r}
 silh_ID1
 ```
 
-## Word clouds for k-means clustering on full dataset 
-
-### Cluster 1
-
-```{r}
-knitr::include_graphics(here("figs", "wc1.png"))
-
-```
-
-
-### Cluster 2
-
-```{r}
-knitr::include_graphics(here("figs", "wc2.png"))
-
-```
-
-### Cluster 3
-
-```{r}
-knitr::include_graphics(here("figs", "wc3.png"))
-
-```
-
-### Cluster 4
-
-```{r}
-knitr::include_graphics(here("figs", "wc4.png"))
-
-```
-
-### Cluster 5
-
-```{r}
-knitr::include_graphics(here("figs", "wc5.png"))
-
-```
-
-### Cluster 6
-
-```{r}
-knitr::include_graphics(here("figs", "wc6.png"))
-
-```
-
-### Cluster 7
-
-```{r}
-knitr::include_graphics(here("figs", "wc7.png"))
-```
-
-### Cluster 8
-
-```{r}
-knitr::include_graphics(here("figs", "wc8.png"))
-
-```
-
-## Scree plot from PCA in spectrum clustering on full dataset 
+## Scree plot from PCA in spectrum clustering
 
 ```{r}
 knitr::include_graphics(here("figs", "scree_p1.png"))
 ```
 
 
-## Optimal number of clusters for spectrum clustering on 10 PCs on full dataset 
+## Optimal number of clusters for spectrum clustering on 10 PCs
 
 ```{r}
 silh_ID3
 ```
 
-## Scree plot from PCA in spectrum clustering on theoretically-driven nutrients
-
-```{r}
-knitr::include_graphics(here("figs", "scree_p2.png"))
-```
-
-
-## Optimal number of clusters for spectrum clustering on theoretically-driven nutrients
-
-```{r}
-silh_ID2
-```
-
-
-## Most important nutrients for spectrum clustering on theoretically-driven nutrients
-
-### Cluster 1
-
-```{r}
-
-important_nutrients9
-```
-
-### Cluster 2
-
-```{r}
-
-important_nutrients10
-```
 
 ## List of packages used 
 
